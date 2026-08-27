@@ -30,6 +30,22 @@ function getRuntimePlatform() {
   }
 }
 
+/**
+ * 是否 H5（浏览器）运行环境：uni-app H5 下 uniPlatform 固定为 'web'，
+ * 比 info.platform 更可靠（platform 在不同版本可能返回 'h5' 或 'web'）。
+ */
+function isH5() {
+  if (typeof uni === 'undefined' || typeof uni.getSystemInfoSync !== 'function') {
+    return false;
+  }
+  try {
+    const info = uni.getSystemInfoSync();
+    return info.uniPlatform === 'web' || info.platform === 'web';
+  } catch (err) {
+    return false;
+  }
+}
+
 function getStoredApiHost() {
   if (typeof uni === 'undefined' || typeof uni.getStorageSync !== 'function') {
     return '';
@@ -46,7 +62,12 @@ function resolveApiHost() {
   if (storedApiHost) {
     return storedApiHost;
   }
-  // 编译为小程序时为 'mp-weixin'，H5 时则为 'h5'（devtools 判断仅供真机联调）
+  // H5（浏览器）走 Vite 代理：返回空 host，URL 变成 /api/app/... 交由 /api 代理转发，
+  // 同源绕过跨域 CORS。
+  if (isH5()) {
+    return '';
+  }
+  // 微信开发者工具（真机联调）用本机地址
   if (getRuntimePlatform() === 'devtools') {
     return DEVTOOLS_API_HOST;
   }
