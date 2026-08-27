@@ -1,14 +1,21 @@
-# ---------- SmartOrdering miniapp (.gitignore) ----------
-# 原生微信小程序
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# 微信开发者工具个人/本机配置（含 appid 等个人设置，勿提交）
-project.private.config.json
-project.private.config.json.backup
-
-# npm 依赖（如需引入 npm 后出现）
-node_modules/
-miniprogram_npm/
-
-# 操作系统
+node_modules
 .DS_Store
-Thumbs.db
+dist
+*.local
+
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -1,0 +1,129 @@
+<template>
+  <view class="cart-bar safe-bottom" v-if="visible">
+    <view class="cart-left" @tap="$emit('carttap')">
+      <view class="cart-icon-wrap">
+        <text class="cart-icon">🛒</text>
+        <view class="cart-badge" v-if="count > 0">{{ count > 99 ? '99+' : count }}</view>
+      </view>
+    </view>
+    <view class="cart-price" v-if="count > 0">
+      <text class="price-symbol">¥</text>
+      <text class="price-num">{{ total }}</text>
+    </view>
+    <view class="cart-empty" v-else>
+      <text>购物车是空的</text>
+    </view>
+    <button class="cart-submit" :class="count > 0 ? 'active' : ''" @tap="onSubmit">
+      {{ submitText }}
+    </button>
+  </view>
+</template>
+
+<script setup>
+// 购物车底部条
+import { defineProps, defineEmits } from 'vue';
+
+const props = defineProps({
+  count: { type: Number, default: 0 },
+  total: { type: Number, default: 0 },
+  submitText: { type: String, default: '去结算' },
+  visible: { type: Boolean, default: true }
+});
+
+const emit = defineEmits(['carttap', 'submit']);
+
+function onCartTap() {
+  emit('carttap');
+}
+
+function onSubmit() {
+  if (props.count === 0) return;
+  emit('submit');
+}
+</script>
+
+<style scoped>
+.cart-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  height: 100rpx;
+  background: #fff;
+  padding: 0 24rpx;
+  z-index: 100;
+  box-shadow: 0 -2rpx 20rpx rgba(0, 0, 0, 0.05);
+}
+.cart-left {
+  flex-shrink: 0;
+}
+.cart-icon-wrap {
+  position: relative;
+  width: 80rpx;
+  height: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cart-icon {
+  font-size: 48rpx;
+}
+.cart-badge {
+  position: absolute;
+  top: -4rpx;
+  right: -8rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  line-height: 32rpx;
+  text-align: center;
+  background: var(--primary);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  padding: 0 8rpx;
+}
+.cart-price {
+  flex: 1;
+  margin-left: 12rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.cart-price .price-symbol {
+  font-size: 24rpx;
+  color: var(--primary);
+}
+.cart-price .price-num {
+  font-size: 36rpx;
+  color: var(--primary);
+}
+.cart-empty {
+  flex: 1;
+  margin-left: 12rpx;
+  font-size: 28rpx;
+  color: var(--text-muted);
+}
+.cart-submit {
+  flex-shrink: 0;
+  width: 200rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+  background: #f1ece8;
+  color: #b2a39d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1rpx solid rgba(189, 175, 169, 0.4);
+  box-sizing: border-box;
+}
+.cart-submit.active {
+  background: linear-gradient(180deg, #f5fcf8 0%, #e8f8ee 100%);
+  color: #07c160;
+  border-color: rgba(7, 193, 96, 0.16);
+  box-shadow: 0 8rpx 18rpx rgba(5, 122, 61, 0.06);
+}
+</style>

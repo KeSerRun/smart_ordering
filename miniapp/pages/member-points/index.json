@@ -1,8 +1,0 @@
-{
-  "navigationBarTitleText": "积分明细",
-  "navigationStyle": "custom",
-  "enablePullDownRefresh": true,
-  "usingComponents": {
-    "app-navbar": "/components/app-navbar/index"
-  }
-}

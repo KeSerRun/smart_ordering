@@ -1,0 +1,28 @@
+{
+  "name": "云点餐",
+  "appid": "wx2e465800950ee424",
+  "description": "智慧点餐系统 - 微信扫码点餐小程序（uni-app 迁移版）",
+  "versionName": "1.0.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "wx2e465800950ee424",
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  },
+  "mp-alipay": {
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  },
+  "h5": {
+    "router": {
+      "mode": "hash"
+    },
+    "title": "云点餐"
+  },
+  "vueVersion": "3"
+}
