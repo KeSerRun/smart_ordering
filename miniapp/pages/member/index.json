@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "会员中心",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-navbar": "/components/app-navbar/index"
+  }
+}

@@ -1,0 +1,35 @@
+<view class="page">
+  <app-navbar title="用餐评价" />
+  <view class="page-glow page-glow-a"></view>
+  <view class="page-glow page-glow-b"></view>
+
+  <view class="review-header">
+    <view class="header-chip">用餐评价</view>
+    <view class="header-title">这顿吃得怎么样</view>
+    <view class="header-desc">整体体验和单品口味都可以直接反馈，后厨和门店会据此优化。</view>
+  </view>
+
+  <view class="section-card">
+    <view class="section-label">整体评分</view>
+    <view class="section-sub">先给这次用餐一个总分，再补一句真实感受。</view>
+    <star-rating value="{{overallRating}}" size="{{48}}" bind:change="onOverallChange" />
+    <textarea class="review-textarea" placeholder="写下你的用餐感受..." value="{{content}}" bindinput="onContentInput" maxlength="500" />
+    <view class="textarea-count">{{content.length}}/500</view>
+  </view>
+
+  <view class="section-card" wx:if="{{itemRatings.length > 0}}">
+    <view class="section-label">单品评分</view>
+    <view class="section-sub">如果某道菜特别好吃，或者需要改进，可以在这里单独打分。</view>
+    <view class="item-rating" wx:for="{{itemRatings}}" wx:key="orderItemId">
+      <view class="ir-copy">
+        <view class="ir-name">{{item.dishName}}</view>
+        <view class="ir-desc">默认 5 分，可按实际口味调整</view>
+      </view>
+      <star-rating value="{{item.rating}}" size="{{36}}" bind:change="onItemChange" data-id="{{item.orderItemId}}" />
+    </view>
+  </view>
+
+  <view class="submit-area">
+    <button class="btn-primary submit-btn" bindtap="submit">提交评价</button>
+  </view>
+</view>

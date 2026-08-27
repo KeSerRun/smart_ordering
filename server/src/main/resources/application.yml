@@ -1,0 +1,46 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: smart-ordering
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  sql:
+    init:
+      mode: always  # 每次启动都执行 schema.sql
+      schema-locations: classpath:schema.sql
+      data-locations: classpath:data.sql
+  cache:
+    type: redis
+  profiles:
+    active: dev
+
+mybatis-plus:
+  # Mapper XML 文件位置
+  mapper-locations: classpath*:mapper/**/*.xml
+  # 实体类别名包（XML 里写 resultType 时可以用短类名）
+  type-aliases-package: com.smartordering.modules.**.entity
+  configuration:
+    map-underscore-to-camel-case: true  # 下划线字段转驼峰
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl # 打印 SQL （dev 方便调试）
+  global-config:
+    db-config:
+      logic-delete-field: deleted # 逻辑删除字段
+      logic-delete-value: 1 # 删除时值
+      logic-not-delete-value: 0  # 未删除时值
+
+# Sa-Token 配置
+sa-token:
+  token-name: Authorization # token名称
+  is-read-cookie: true # 从cookie中获取token, 并自动把token注入到header
+  timeout: 2592000  # 有效期 30 天，单位秒
+  active-timeout: -1  # 永不续期
+  is-concurrent: true # 允许同一账号多端登陆
+  token-style: uuid # token 风格
+  is-log: false # 是否输出日志
+

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "点餐",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index"
+  }
+}

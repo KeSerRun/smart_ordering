@@ -1,0 +1,56 @@
+<view class="page">
+  <app-navbar title="支付订单" />
+  <view class="page-glow page-glow-a"></view>
+  <view class="page-glow page-glow-b"></view>
+
+  <view class="payment-hero">
+    <view class="hero-chip">确认支付</view>
+    <view class="hero-title">确认本单支付信息</view>
+    <view class="hero-desc">确认金额后发起微信支付，支付成功后自动返回结果页。</view>
+  </view>
+
+  <view class="order-summary" wx:if="{{order}}">
+    <view class="summary-head">
+      <text class="summary-no">订单 #{{order.orderNo}}</text>
+      <text class="summary-mode">{{order.paymentMode === 0 ? '餐前付' : '餐后付'}}</text>
+    </view>
+
+    <view class="summary-pills">
+      <view class="summary-pill">共 {{order.items.length}} 道菜</view>
+      <view class="summary-pill">状态 {{order.status === 1 ? '已支付' : '待支付'}}</view>
+    </view>
+
+    <view class="summary-items">
+      <view class="summary-item" wx:for="{{order.items}}" wx:key="id">
+        <text class="si-name">{{item.dishName}}</text>
+        <text class="si-qty">×{{item.quantity}}</text>
+        <text class="si-price">¥{{item.price}}</text>
+      </view>
+    </view>
+
+    <view class="summary-amount">
+      <text class="amount-label">应付金额</text>
+      <view class="amount-value">
+        <text class="amount-symbol">¥</text>
+        <text class="amount-num">{{order.actualAmount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="pay-section">
+    <view class="section-title">支付方式</view>
+    <view class="section-desc">当前仅开放微信支付，支付成功后自动返回结果页。</view>
+    <view class="pay-method wechat">
+      <text class="method-icon">微</text>
+      <text class="method-name">微信支付</text>
+      <view class="method-check">✓</view>
+    </view>
+
+    <view class="pay-submit">
+      <view class="pay-status" wx:if="{{paymentStatusText}}">{{paymentStatusText}}</view>
+      <button class="btn-primary pay-btn" bindtap="payNow" loading="{{paying}}" disabled="{{paying}}">
+        {{paying ? '支付处理中...' : '立即支付'}}
+      </button>
+    </view>
+  </view>
+</view>

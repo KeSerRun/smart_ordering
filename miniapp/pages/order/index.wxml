@@ -1,0 +1,76 @@
+<view class="order-page">
+  <app-navbar title="订单" backgroundColor="#fcfaf7" />
+  <view class="order-page__glow order-page__glow-a"></view>
+  <view class="order-page__glow order-page__glow-b"></view>
+
+  <view class="order-topbar">
+    <view class="order-topbar__hint">{{tableId ? ('桌号 ' + tableId) : '当前桌台'}}</view>
+  </view>
+
+  <view class="order-stats" wx:if="{{orders.length > 0}}">
+    <view class="order-stats__card">
+      <text class="order-stats__label">订单数</text>
+      <text class="order-stats__value">{{orders.length}}</text>
+    </view>
+    <view class="order-stats__card">
+      <text class="order-stats__label">待支付</text>
+      <text class="order-stats__value">{{unpaidOrderCount}}</text>
+    </view>
+    <view class="order-stats__card">
+      <text class="order-stats__label">已完成菜品</text>
+      <text class="order-stats__value">{{completedDishCount}}</text>
+    </view>
+  </view>
+
+  <view class="order-section" wx:if="{{orders.length > 0}}">
+    <view class="order-card" wx:for="{{orders}}" wx:key="id" wx:for-item="order" data-order-id="{{order.id}}">
+      <view class="order-card__head">
+        <view class="order-card__meta">
+          <view class="order-card__store">堂食 · 当前桌台</view>
+          <view class="order-card__time">{{order.timeText}}</view>
+        </view>
+        <view class="order-card__status status-{{order.status}}">{{order.statusText}}</view>
+      </view>
+
+      <view class="order-card__body">
+        <view class="order-card__items">
+          <view class="order-card__item" wx:for="{{order.items}}" wx:key="id" wx:for-item="dish">
+            <view class="order-card__item-info">
+              <view class="order-card__item-top">
+                <text class="order-card__item-name">{{dish.dishName}}</text>
+                <text class="order-card__item-price">¥{{dish.price}}</text>
+              </view>
+              <view class="order-card__item-sub">{{dish.remark || '默认口味'}} · x{{dish.quantity}}</view>
+            </view>
+            <view class="order-card__item-state state-{{dish.status}}">{{dish.statusText}}</view>
+          </view>
+        </view>
+
+        <view class="order-card__total">
+          <view class="order-card__total-row">
+            <text>菜品数量</text>
+            <text>共 {{order.items.length}} 件</text>
+          </view>
+          <view class="order-card__total-row order-card__total-row--strong">
+            <text>合计</text>
+            <text>¥{{order.actualAmount}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="order-card__foot">
+        <button class="order-card__action primary pay-action" wx:if="{{order.status === 0}}" data-order-id="{{order.id}}" catchtap="goPayment">去支付</button>
+        <button class="order-card__action primary" wx:if="{{order.status === 1 && !order.reviewed}}" data-order-id="{{order.id}}" data-status="{{order.status}}" catchtap="goReview">去评价</button>
+        <view class="order-card__done" wx:if="{{order.reviewed}}">已评价</view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="order-empty">
+    <image class="order-empty__icon" src="/assets/tabbar/order.png" mode="aspectFit" />
+    <view class="order-empty__title">还没有订单</view>
+    <view class="order-empty__desc">先去点餐页选菜，下单后这里会展示支付和出餐进度。</view>
+    <button class="order-empty__btn" bindtap="goMenuForAddItem">去点餐</button>
+  </view>
+
+</view>

@@ -1,0 +1,20 @@
+<view class="dish-card {{dish.status === 0 ? 'sold-out' : ''}}" bindtap="onTap">
+  <image class="dish-img" src="{{dish.image || dish.imageUrl || ''}}" mode="aspectFill" lazy-load />
+  <view class="dish-info">
+    <view class="dish-name text-ellipsis">{{dish.name}}</view>
+    <view class="dish-desc text-ellipsis" wx:if="{{dish.description}}">{{dish.description}}</view>
+    <view class="dish-tags" wx:if="{{dish.tags && dish.tags.length}}">
+      <text class="tag tag-hot" wx:for="{{dish.tags}}" wx:key="index" wx:if="{{index < 2}}">{{item}}</text>
+    </view>
+    <view class="dish-bottom">
+      <view class="dish-price">
+        <text class="price-symbol">¥</text>
+        <text class="price-num">{{dish.price}}</text>
+      </view>
+      <view class="add-btn {{dish.status === 0 ? 'disabled' : ''}}" wx:if="{{showAddBtn}}" catchtap="onAdd">
+        <text wx:if="{{dish.status === 0}}">售罄</text>
+        <text wx:else>+</text>
+      </view>
+    </view>
+  </view>
+</view>

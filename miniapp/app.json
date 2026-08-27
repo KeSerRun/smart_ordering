@@ -1,0 +1,60 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/table/index",
+    "pages/menu/index",
+    "pages/order/index",
+    "pages/profile/index",
+    "pages/member/index",
+    "pages/member-points/index",
+    "pages/member-growth/index",
+    "pages/coupon/index",
+    "pages/feedback/index",
+    "pages/cart/index",
+    "pages/payment/index",
+    "pages/review/index",
+    "pages/my-review/index",
+    "pages/result/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "云点餐",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F5F5",
+    "backgroundTextStyle": "light"
+  },
+  "tabBar": {
+    "color": "#9d8a84",
+    "selectedColor": "#07c160",
+    "borderStyle": "white",
+    "backgroundColor": "#fffaf6",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "assets/tabbar/home.png",
+        "selectedIconPath": "assets/tabbar/home-active.png"
+      },
+      {
+        "pagePath": "pages/menu/index",
+        "text": "点餐",
+        "iconPath": "assets/tabbar/menu.png",
+        "selectedIconPath": "assets/tabbar/menu-active.png"
+      },
+      {
+        "pagePath": "pages/order/index",
+        "text": "订单",
+        "iconPath": "assets/tabbar/order.png",
+        "selectedIconPath": "assets/tabbar/order-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "assets/tabbar/profile.png",
+        "selectedIconPath": "assets/tabbar/profile-active.png"
+      }
+    ]
+  },
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

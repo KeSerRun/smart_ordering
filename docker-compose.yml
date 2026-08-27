@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: so-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123456
+      MYSQL_DATABASE: smart_ordering
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - ./data/docker/mysql:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: so-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redis123456
+    volumes:
+      - ./data/docker/redis:/data
+
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: so-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: so
+      RABBITMQ_DEFAULT_PASS: so123456
+    ports:
+      - "5672:5672"     # AMQP 协议
+      - "15672:15672"   # 管理后台
+    volumes:
+      - ./data/docker/rabbitmq:/var/lib/rabbitmq
+
+  minio:
+    image: minio/minio:latest
+    container_name: so-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"     # S3 API
+      - "9001:9001"     # 控制台
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./data/docker/minio:/data

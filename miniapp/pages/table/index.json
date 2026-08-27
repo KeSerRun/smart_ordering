@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "扫码开台",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-navbar": "/components/app-navbar/index"
+  }
+}

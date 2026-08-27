@@ -1,0 +1,10 @@
+<view class="star-rating">
+  <view
+    wx:for="{{stars}}"
+    wx:key="index"
+    class="star {{item.filled ? 'filled' : ''}} {{readonly ? 'readonly' : ''}}"
+    style="font-size: {{size}}rpx;"
+    data-index="{{index}}"
+    bindtap="onTap"
+  >★</view>
+</view>

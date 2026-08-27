@@ -1,0 +1,145 @@
+<view class="profile-page">
+  <view class="profile-page__glow profile-page__glow-a"></view>
+  <view class="profile-page__glow profile-page__glow-b"></view>
+
+  <view class="nav-bar" style="padding-top: {{statusBarHeight}}px;">
+    <view class="nav-content" style="height: {{navBarHeight}}px;">
+      <view class="nav-title">我的</view>
+    </view>
+  </view>
+
+  <view class="profile-hero" wx:if="{{banners.length > 0}}">
+    <view class="profile-hero__banner-stage" wx:if="{{banners.length > 0}}">
+      <swiper
+        class="profile-hero__banner-swiper"
+        circular
+        autoplay
+        interval="4200"
+        duration="450"
+        indicator-dots
+        indicator-color="rgba(237, 249, 242, 0.24)"
+        indicator-active-color="#fff7f2"
+      >
+        <swiper-item wx:for="{{banners}}" wx:key="id">
+          <view class="profile-hero__banner-card" bindtap="openBanner" data-banner="{{item}}">
+            <image class="profile-hero__banner-image" src="{{item.imageUrl}}" mode="aspectFill" lazy-load />
+            <view class="profile-hero__banner-overlay"></view>
+          </view>
+        </swiper-item>
+      </swiper>
+    </view>
+  </view>
+
+  <view class="identity-card {{banners.length > 0 ? 'identity-card--overlap' : ''}}">
+    <block wx:if="{{!loggedIn}}">
+      <view class="identity-card__title">注册/登录</view>
+      <view class="identity-card__desc">注册会员享受更多专属特权</view>
+      <view class="agreement-row" bindtap="toggleAgreeProtocol">
+        <view class="agreement-check {{agreeProtocol ? 'checked' : ''}}">
+          <text wx:if="{{agreeProtocol}}">✓</text>
+        </view>
+        <view class="agreement-text">
+          已阅读并同意
+          <text class="agreement-link" catchtap="openUserAgreement">《用户协议》</text>
+          和
+          <text class="agreement-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+        </view>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="identity-card__title">会员已登录</view>
+      <view class="identity-card__desc">订单、优惠券、评价和会员服务都可以在这里查看</view>
+    </block>
+  </view>
+
+  <view class="login-section" wx:if="{{!loggedIn}}">
+    <button
+      class="btn-primary identity-card__btn {{!agreeProtocol ? 'identity-card__btn--disabled' : ''}}"
+      open-type="{{agreeProtocol ? 'getPhoneNumber' : ''}}"
+      bindtap="handlePhoneLoginTap"
+      bindgetphonenumber="handlePhoneLogin"
+    >
+      手机号快捷登录
+    </button>
+  </view>
+
+  <view class="promo-banner" wx:if="{{banners.length === 0}}">
+    <view class="promo-banner__frame">
+      <view class="promo-banner__copy">
+        <view class="promo-banner__eyebrow">会员服务</view>
+        <view class="promo-banner__title">会员专享</view>
+        <view class="promo-banner__desc">优惠券、会员积分、评价记录都在这里统一管理</view>
+        <view class="promo-banner__tag">云点餐会员中心</view>
+      </view>
+      <view class="promo-banner__snack">
+        <view class="promo-banner__snack-a"></view>
+        <view class="promo-banner__snack-b"></view>
+        <view class="promo-banner__snack-c"></view>
+        <view class="promo-banner__crumb crumb-a"></view>
+        <view class="promo-banner__crumb crumb-b"></view>
+        <view class="promo-banner__crumb crumb-c"></view>
+      </view>
+    </view>
+  </view>
+
+  <view class="quick-card">
+    <view class="quick-grid">
+      <view class="quick-item" bindtap="goOrder">
+        <view class="quick-item__icon">单</view>
+        <view class="quick-item__label">订单</view>
+      </view>
+      <view class="quick-item" bindtap="goCoupon">
+        <view class="quick-item__icon">券</view>
+        <view class="quick-item__label">优惠设置</view>
+      </view>
+      <view class="quick-item" bindtap="goMember">
+        <view class="quick-item__icon">会</view>
+        <view class="quick-item__label">完善资料</view>
+      </view>
+      <view class="quick-item" bindtap="handleQuickEntryAction">
+        <view class="quick-item__icon">反</view>
+        <view class="quick-item__label">意见反馈</view>
+      </view>
+    </view>
+  </view>
+
+  <block wx:if="{{loggedIn}}">
+    <view class="menu-section">
+      <view class="menu-group">
+        <view class="menu-group__title">更多服务</view>
+        <view class="menu-item" bindtap="goMyReview">
+          <view class="menu-left">
+            <text class="menu-icon">评</text>
+            <text class="menu-label">我的评价</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+        <view class="menu-item" bindtap="goFeedback">
+          <view class="menu-left">
+            <text class="menu-icon">反</text>
+            <text class="menu-label">意见反馈</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+        <view class="menu-item" bindtap="goAbout">
+          <view class="menu-left">
+            <text class="menu-icon">关</text>
+            <text class="menu-label">关于我们</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+        <view class="menu-item" bindtap="clearCache">
+          <view class="menu-left">
+            <text class="menu-icon">清</text>
+            <text class="menu-label">清除缓存</text>
+          </view>
+          <text class="menu-arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="logout-section">
+      <button class="logout-btn" bindtap="handleLogout">退出登录</button>
+    </view>
+  </block>
+</view>

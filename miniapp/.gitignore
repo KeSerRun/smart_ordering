@@ -1,0 +1,14 @@
+# ---------- SmartOrdering miniapp (.gitignore) ----------
+# 原生微信小程序
+
+# 微信开发者工具个人/本机配置（含 appid 等个人设置，勿提交）
+project.private.config.json
+project.private.config.json.backup
+
+# npm 依赖（如需引入 npm 后出现）
+node_modules/
+miniprogram_npm/
+
+# 操作系统
+.DS_Store
+Thumbs.db

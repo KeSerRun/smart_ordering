@@ -1,0 +1,29 @@
+# ---------- SmartOrdering admin-lite (.gitignore) ----------
+# 精简版管理端前端（Vue3 + JS + Vite + npm）
+
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+dist-ssr/
+coverage/
+
+# 日志
+logs/
+*.log
+npm-debug.log*
+
+# 本地环境覆盖（显式的 .env* 共享配置保留提交）
+*.local
+.env.local
+.env.*.local
+
+# IDE / 编辑器
+.idea/
+*.iml
+.vscode/
+
+# 操作系统
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+# ---------- SmartOrdering backend (.gitignore) ----------
+# Spring Boot 3 + Maven 后端
+
+# 构建产物
+target/
+
+# 运行期生成（本项目用 java -cp 直启，生成的 classpath 辅助文件）
+cp.txt
+
+# 日志
+logs/
+*.log
+
+# IDE / 编辑器
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+.factorypath
+
+# 操作系统
+.DS_Store
+Thumbs.db

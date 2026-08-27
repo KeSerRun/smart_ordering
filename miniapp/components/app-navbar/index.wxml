@@ -1,0 +1,22 @@
+<view class="app-navbar-placeholder" style="height: {{totalHeight}}px;">
+  <view
+    class="app-navbar"
+    style="height: {{totalHeight}}px; background-color: {{backgroundColor}}; color: {{textColor}};"
+  >
+    <view
+      class="app-navbar__body"
+      style="height: {{navBarHeight}}px; padding-top: {{statusBarHeight}}px;"
+    >
+      <view
+        wx:if="{{showBack}}"
+        class="app-navbar__back"
+        hover-class="app-navbar__back--pressed"
+        bindtap="handleBack"
+        aria-label="返回"
+      >
+        <view class="app-navbar__back-icon"></view>
+      </view>
+      <view class="app-navbar__title">{{title}}</view>
+    </view>
+  </view>
+</view>

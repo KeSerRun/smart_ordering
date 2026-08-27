@@ -1,0 +1,140 @@
+<view class="page">
+  <app-navbar title="会员中心" />
+  <view class="page-glow page-glow-a"></view>
+  <view class="page-glow page-glow-b"></view>
+  <view class="hero-card" wx:if="{{center}}">
+    <view class="hero-top">
+      <view>
+        <view class="hero-chip">会员中心</view>
+        <view class="hero-title">{{center.levelName || '普通会员'}}</view>
+        <view class="hero-subtitle">会员编号 {{center.memberNo}}</view>
+      </view>
+      <view class="hero-badge">VIP</view>
+    </view>
+
+    <view class="hero-stats">
+      <view class="stat-card" bindtap="goPoints">
+        <view class="stat-value">{{center.pointsBalance || 0}}</view>
+        <view class="stat-label">当前积分</view>
+      </view>
+      <view class="stat-card" bindtap="goGrowth">
+        <view class="stat-value">{{center.growthValue || 0}}</view>
+        <view class="stat-label">成长值</view>
+      </view>
+      <view class="stat-card">
+        <view class="stat-value">{{center.totalAmountConsumed || 0}}</view>
+        <view class="stat-label">累计消费</view>
+      </view>
+    </view>
+
+    <view class="progress-card">
+      <view class="progress-head">
+        <text>升级进度</text>
+        <text wx:if="{{center.pointsToNextLevel > 0}}">还差 {{center.pointsToNextLevel}} 成长值升级 {{center.nextLevelName}}</text>
+        <text wx:else>当前已是最高等级</text>
+      </view>
+      <view class="progress-track">
+        <view class="progress-fill" style="width: {{center.pointsToNextLevel > 0 && center.nextLevelThreshold ? ((center.growthValue / center.nextLevelThreshold) * 100) : 100}}%;"></view>
+      </view>
+      <view class="progress-foot">
+        <text>当前 {{center.growthValue || 0}}</text>
+        <text>{{center.nextLevelThreshold || center.growthValue || 0}}</text>
+      </view>
+    </view>
+
+    <view class="benefit-card">
+      <view class="benefit-head">
+        <text>当前等级权益</text>
+        <text>{{center.pointsRate || 1}} 倍积分 / {{center.discountRate || 1}} 折扣倍率</text>
+      </view>
+      <view class="benefit-tags" wx:if="{{currentBenefitTags.length}}">
+        <text class="benefit-tag" wx:for="{{currentBenefitTags}}" wx:key="index">{{item}}</text>
+      </view>
+      <view class="benefit-empty" wx:else>当前等级暂未配置额外权益说明</view>
+    </view>
+  </view>
+
+  <view class="action-row">
+    <view class="action-card" bindtap="goPoints">
+      <view class="action-icon">积</view>
+      <view>
+        <view class="action-title">积分明细</view>
+        <view class="action-desc">查看积分获取与变动记录</view>
+      </view>
+    </view>
+    <view class="action-card" bindtap="goGrowth">
+      <view class="action-icon">长</view>
+      <view>
+        <view class="action-title">成长明细</view>
+        <view class="action-desc">查看成长值累计与升级进度</view>
+      </view>
+    </view>
+    <view class="action-card" bindtap="goCoupon">
+      <view class="action-icon">券</view>
+      <view>
+        <view class="action-title">我的优惠券</view>
+        <view class="action-desc">查看已到账的生日券、等级券和兑换券</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{benefitOverview}}">
+    <view class="section-title">会员权益玩法</view>
+    <view class="benefit-panel">
+      <view class="benefit-panel__item">
+        <view class="benefit-panel__title">积分抵现</view>
+        <view class="benefit-panel__desc" wx:if="{{benefitOverview.pointsDeductionRule && benefitOverview.pointsDeductionRule.enabled}}">
+          {{pointsDeductionSummary}}
+        </view>
+        <view class="benefit-panel__desc" wx:else>当前未启用积分抵现</view>
+      </view>
+
+      <view class="benefit-panel__item" wx:if="{{benefitOverview.exclusiveBenefit && benefitOverview.exclusiveBenefit.templateId}}">
+        <view class="benefit-panel__head">
+          <view>
+            <view class="benefit-panel__title">{{benefitOverview.exclusiveBenefit.levelName}} 专属券</view>
+            <view class="benefit-panel__desc">{{benefitOverview.exclusiveBenefit.templateName}}</view>
+          </view>
+          <button class="mini-btn" bindtap="claimExclusiveCoupon" disabled="{{!benefitOverview.exclusiveBenefit.claimable}}">
+            {{benefitOverview.exclusiveBenefit.claimable ? '立即领取' : benefitOverview.exclusiveBenefit.claimTip}}
+          </button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section" wx:if="{{benefitOverview && benefitOverview.exchangeCoupons && benefitOverview.exchangeCoupons.length}}">
+    <view class="section-title">积分兑换优惠券</view>
+    <view class="exchange-list">
+      <view class="exchange-card" wx:for="{{benefitOverview.exchangeCoupons}}" wx:key="id">
+        <view class="exchange-card__main">
+          <view class="exchange-card__title">{{item.templateName}}</view>
+          <view class="exchange-card__desc">{{item.description || '兑换后自动发放到我的优惠券'}}</view>
+          <view class="exchange-card__meta">已兑 {{item.exchangedCount || 0}} 次<span wx:if="{{item.perUserLimit > 0}}"> / 上限 {{item.perUserLimit}} 次</span></view>
+        </view>
+        <view class="exchange-card__side">
+          <view class="exchange-card__cost">{{item.pointsCost}} 积分</view>
+          <button class="exchange-btn" data-id="{{item.id}}" data-cost="{{item.pointsCost}}" bindtap="exchangeCoupon">立即兑换</button>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section">
+    <view class="section-title">等级说明</view>
+    <view class="level-list">
+      <view class="level-item" wx:for="{{levels}}" wx:key="id">
+        <view class="level-head">
+          <text class="level-name">{{item.levelName}}</text>
+          <text class="level-threshold">成长值 {{item.growthThreshold}}</text>
+        </view>
+        <view class="level-meta">
+          <text>积分倍率 {{item.pointsRate}}</text>
+          <text>折扣倍率 {{item.discountRate}}</text>
+        </view>
+        <view class="level-benefits" wx:if="{{item.benefitConfig}}">{{item.benefitConfig}}</view>
+        <view class="level-remark" wx:if="{{item.remark}}">{{item.remark}}</view>
+      </view>
+    </view>
+  </view>
+</view>

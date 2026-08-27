@@ -1,0 +1,18 @@
+<view class="cart-bar safe-bottom" wx:if="{{visible}}">
+  <view class="cart-left" bindtap="onCartTap">
+    <view class="cart-icon-wrap">
+      <text class="cart-icon">🛒</text>
+      <view class="cart-badge" wx:if="{{count > 0}}">{{count > 99 ? '99+' : count}}</view>
+    </view>
+  </view>
+  <view class="cart-price" wx:if="{{count > 0}}">
+    <text class="price-symbol">¥</text>
+    <text class="price-num">{{total}}</text>
+  </view>
+  <view class="cart-empty" wx:else>
+    <text>购物车是空的</text>
+  </view>
+  <button class="cart-submit {{count > 0 ? 'active' : ''}}" bindtap="onSubmit">
+    {{submitText}}
+  </button>
+</view>

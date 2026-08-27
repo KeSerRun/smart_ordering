@@ -1,0 +1,12 @@
+# ---------- SmartOrdering 项目根 (.gitignore) ----------
+
+# Docker 数据卷（容器运行数据：mysql/redis/rabbitmq/minio 本地库与对象，勿提交）
+data/
+
+# 日志
+*.log
+logs/
+
+# 操作系统
+.DS_Store
+Thumbs.db

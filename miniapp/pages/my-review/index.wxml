@@ -1,0 +1,55 @@
+<view class="page">
+  <app-navbar title="我的评价" />
+  <!-- 头部 -->
+  <view class="review-header">
+    <view class="header-title">我的评价</view>
+    <view class="header-desc">共 {{total}} 条评价</view>
+  </view>
+
+  <!-- 评价列表 -->
+  <view class="review-list" wx:if="{{list.length > 0}}">
+    <view class="review-card" wx:for="{{list}}" wx:key="id" wx:for-item="review">
+      <view class="card-head">
+        <text class="card-order-no">订单 #{{review.orderNo || review.orderId}}</text>
+        <text class="card-time">{{review.createTime || '-'}}</text>
+      </view>
+
+      <view class="card-rating">
+        <text class="card-label">整体评分</text>
+        <star-rating value="{{review.overallRating}}" size="{{28}}" readonly="{{true}}" />
+      </view>
+
+      <view class="card-content" wx:if="{{review.content}}">
+        <view class="card-label">评价内容</view>
+        <view class="content-text">{{review.content}}</view>
+      </view>
+
+      <!-- 单品评分 -->
+      <view class="card-items" wx:if="{{review.itemReviewDisplay.length > 0}}">
+        <view class="card-label">单品评分</view>
+        <view class="item-row" wx:for="{{review.itemReviewDisplay}}" wx:key="id" wx:for-item="item">
+          <image
+            wx:if="{{item.dishImageUrl && !item.imageError}}"
+            class="item-thumb"
+            src="{{item.dishImageUrl}}"
+            mode="aspectFill"
+            lazy-load
+            data-review-id="{{review.id}}"
+            data-item-id="{{item.itemId || item.orderItemId}}"
+            binderror="onItemImageError"
+          />
+          <view wx:else class="item-thumb item-thumb-empty">无图</view>
+          <text class="item-name">{{item.displayName}}</text>
+          <star-rating value="{{item.ratingValue}}" size="{{24}}" readonly="{{true}}" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <empty-state wx:elif="{{!loading}}" text="暂无评价" icon="/assets/tabbar/profile.png" />
+
+  <!-- 底部提示 -->
+  <view class="bottom-tip" wx:if="{{loading}}">加载中...</view>
+  <view class="bottom-tip" wx:if="{{finished && list.length > 0}}">— 没有更多了 —</view>
+</view>

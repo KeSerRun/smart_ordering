@@ -1,0 +1,85 @@
+<view class="page">
+  <app-navbar title="购物车" backgroundColor="#fbf8f4" />
+  <view class="page-glow page-glow-a"></view>
+  <view class="page-glow page-glow-b"></view>
+
+  <view class="cart-header">
+    <view class="cart-header-top">
+      <view>
+        <view class="header-chip">购物车</view>
+        <view class="header-title">确认已选菜品</view>
+        <view class="header-desc">先确认菜品数量、口味备注和优惠方式，再提交订单。</view>
+      </view>
+      <view class="header-count">{{cart.totalCount || 0}} 件</view>
+    </view>
+
+    <view class="header-meta-row">
+      <view class="header-meta-pill" wx:if="{{tableId}}">桌号 {{tableId}}</view>
+      <view class="header-meta-pill">菜品 {{cart.items.length || 0}} 道</view>
+      <view class="header-meta-pill">应付 ¥{{payableTotal}}</view>
+    </view>
+  </view>
+
+  <view class="summary-card" wx:if="{{cart.items && cart.items.length > 0}}">
+      <view class="summary-head">
+        <view>
+        <view class="summary-title">本单摘要</view>
+        <view class="summary-desc">可先调整数量、备注和优惠方式。</view>
+        </view>
+        <view class="summary-clear" bindtap="clearCart">清空</view>
+      </view>
+    <view class="summary-pills">
+      <view class="summary-pill">原价 ¥{{cart.totalPrice}}</view>
+      <view class="summary-pill">{{selectedCouponText}}</view>
+      <view class="summary-pill">{{pointsText}}</view>
+    </view>
+  </view>
+
+  <view class="cart-list" wx:if="{{cart.items && cart.items.length > 0}}">
+    <view class="cart-item" wx:for="{{cart.items}}" wx:key="dishId">
+      <view class="item-main">
+        <view class="item-info">
+          <view class="item-name-row">
+            <view class="item-name">{{item.dishName}}</view>
+            <view class="item-badge">x{{item.quantity}}</view>
+          </view>
+          <view class="item-price">¥{{item.price}}</view>
+        </view>
+        <view class="item-subtotal">¥{{item.amount || item.subtotal}}</view>
+      </view>
+
+      <view class="item-ops">
+        <view class="qty-stepper">
+          <view class="qty-btn" data-item="{{item}}" bindtap="decrease">−</view>
+          <text class="qty-num">{{item.quantity}}</text>
+          <view class="qty-btn" data-item="{{item}}" bindtap="increase">+</view>
+        </view>
+
+        <view class="remark-wrap">
+          <input class="remark-input" data-id="{{item.dishId}}" value="{{item.remark}}" placeholder="口味备注" bindinput="onRemarkInput" />
+          <text class="remark-save" data-id="{{item.dishId}}" bindtap="saveRemark">保存</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <empty-state wx:else text="购物车是空的" icon="/assets/tabbar/cart.png" actionText="去点餐" actionClass="cart-empty-action" bind:action="goMenu" />
+
+  <view class="bottom-bar safe-bottom" wx:if="{{cart.items && cart.items.length > 0}}">
+    <view class="bar-info">
+      <view class="coupon-row" bindtap="choosePoints" wx:if="{{benefitOverview && benefitOverview.pointsDeductionRule && benefitOverview.pointsDeductionRule.enabled}}">
+        <text class="coupon-row-label">积分抵现</text>
+        <text class="coupon-row-value">{{pointsText}}</text>
+      </view>
+      <view class="coupon-row" bindtap="chooseCoupon">
+        <text class="coupon-row-label">优惠券</text>
+        <text class="coupon-row-value">{{selectedCouponText}}</text>
+      </view>
+      <view class="bar-total-wrap">
+        <view class="bar-total-label">合计</view>
+        <view class="bar-total-price">¥{{payableTotal}}</view>
+      </view>
+    </view>
+    <button class="btn-primary bar-submit" bindtap="submitOrder">提交订单</button>
+  </view>
+</view>

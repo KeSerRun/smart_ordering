@@ -1,0 +1,86 @@
+<view class="container table-page">
+  <app-navbar title="扫码开台" />
+  <view class="hero-wrap">
+    <view class="hero-content">
+      <view class="hero-chip">入座开台</view>
+      <view class="hero-title">找到你的餐桌</view>
+      <view class="hero-sub">关联桌台后，点餐、加菜和支付都会归到当前桌次。</view>
+      <view class="hero-table" wx:if="{{table}}">
+        <text class="hero-table-label">当前桌台</text>
+        <text class="hero-table-value">{{table.code || '-'}} {{table.name || ''}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 未登录时显示手机号登录 -->
+  <view class="card login-card" wx:if="{{!loggedIn}}">
+    <view class="section-head">
+      <view class="title">微信登录</view>
+      <view class="scene-tag">需要登录</view>
+    </view>
+    <view class="sub">登录后可关联桌台，并把订单同步到当前账号。</view>
+    <view class="agreement-row" bindtap="toggleAgreeProtocol">
+      <view class="agreement-check {{agreeProtocol ? 'checked' : ''}}">
+        <text wx:if="{{agreeProtocol}}">✓</text>
+      </view>
+      <view class="agreement-text">
+        已阅读并同意
+        <text class="agreement-link" catchtap="openUserAgreement">《用户协议》</text>
+        和
+        <text class="agreement-link" catchtap="openPrivacyPolicy">《隐私政策》</text>
+      </view>
+    </view>
+    <button
+      class="btn-primary login-btn {{!agreeProtocol ? 'login-btn--disabled' : ''}}"
+      open-type="{{agreeProtocol ? 'getPhoneNumber' : ''}}"
+      bindtap="handlePhoneLoginTap"
+      bindgetphonenumber="handlePhoneLogin"
+    >
+      手机号快速登录
+    </button>
+  </view>
+
+  <view class="card entry-card" wx:if="{{loggedIn}}">
+    <view class="section-head">
+      <view class="title">扫码开台</view>
+      <view class="scene-tag">桌台关联</view>
+    </view>
+    <view class="sub">扫桌面小程序码，或输入服务员提供的桌台编码。</view>
+
+    <view class="input-box">
+      <view class="input-label">桌台编码</view>
+      <input class="input" placeholder="例如 A01" value="{{tableCode}}" bindinput="onCodeInput" />
+    </view>
+
+    <view class="row">
+      <button class="btn-primary scan-btn" bindtap="scanCode">扫码识别</button>
+      <button class="btn-muted query-btn" bindtap="loadTable">查询桌台</button>
+    </view>
+  </view>
+
+  <view class="card table-card" wx:if="{{table}}">
+    <view class="row between">
+      <view class="title">当前桌台</view>
+      <view class="status {{table.status === 0 ? 's0' : table.status === 1 ? 's1' : table.status === 2 ? 's2' : 's3'}}">
+        {{table.status === 0 ? '空闲' : table.status === 1 ? '占用' : table.status === 2 ? '已结账' : '待清洁'}}
+      </view>
+    </view>
+
+    <view class="table-meta">
+      <view class="meta-row">
+        <text class="label">桌号</text>
+        <text class="value">{{table.code}} / {{table.name}}</text>
+      </view>
+      <view class="meta-row">
+        <text class="label">区域</text>
+        <text class="value">{{table.areaName || '-'}}</text>
+      </view>
+    </view>
+
+    <view wx:if="{{entryHintText}}" class="entry-hint entry-hint--{{entryHintTone}}">
+      {{entryHintText}}
+    </view>
+
+    <button class="btn-primary enter-btn" bindtap="enterMenu">进入点餐</button>
+  </view>
+</view>

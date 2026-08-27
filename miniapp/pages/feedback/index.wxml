@@ -1,0 +1,54 @@
+<view class="page">
+  <app-navbar title="意见反馈" />
+  <view class="composer-card">
+    <view class="section-title">告诉我们哪里还不够好用</view>
+    <view class="section-desc">可以反馈页面问题、点餐流程问题，或你希望增加的功能。</view>
+
+    <textarea
+      class="feedback-textarea"
+      placeholder="请输入你的意见或建议"
+      maxlength="500"
+      value="{{content}}"
+      bindinput="onContentInput"
+    />
+
+    <input
+      class="contact-input"
+      placeholder="留下手机号，方便我们联系你"
+      maxlength="30"
+      value="{{contactPhone}}"
+      bindinput="onPhoneInput"
+    />
+
+    <button class="btn-primary submit-btn" loading="{{submitting}}" bindtap="handleSubmit">提交反馈</button>
+  </view>
+
+  <view class="history-card">
+    <view class="history-head">
+      <view>
+        <view class="section-title">我的反馈</view>
+        <view class="section-desc">共 {{total}} 条，回复后会展示在这里</view>
+      </view>
+    </view>
+
+    <view class="empty" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-title">还没有反馈记录</view>
+      <view class="empty-desc">提交后我们会尽快处理并回复</view>
+    </view>
+
+    <view class="feedback-list" wx:else>
+      <view class="feedback-item" wx:for="{{list}}" wx:key="id">
+        <view class="item-head">
+          <view class="item-status {{item.status === 1 ? 'is-done' : 'is-pending'}}">{{item.statusText}}</view>
+          <view class="item-time">{{item.createTime}}</view>
+        </view>
+        <view class="item-content">{{item.content}}</view>
+        <view class="item-reply" wx:if="{{item.replyContent}}">
+          <view class="reply-label">门店回复</view>
+          <view class="reply-content">{{item.replyContent}}</view>
+          <view class="reply-time" wx:if="{{item.replyTime}}">{{item.replyTime}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

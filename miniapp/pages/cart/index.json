@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "empty-state": "/components/empty-state/index",
+    "app-navbar": "/components/app-navbar/index"
+  }
+}

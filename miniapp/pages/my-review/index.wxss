@@ -1,0 +1,118 @@
+/* ========== 页面 ========== */
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: 40rpx;
+}
+
+/* ========== 头部 ========== */
+.review-header {
+  padding: 24rpx 32rpx 16rpx;
+  background: #fff;
+}
+.header-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.header-desc {
+  margin-top: 6rpx;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+}
+
+/* ========== 评价卡片 ========== */
+.review-list {
+  padding: 16rpx 24rpx;
+}
+.review-card {
+  background: var(--card);
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-order-no {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.card-time {
+  font-size: 24rpx;
+  color: var(--text-muted);
+}
+.card-rating {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+}
+.card-label {
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+.card-content {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border);
+}
+.content-text {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  color: var(--text-primary);
+  line-height: 1.6;
+  background: var(--bg);
+  border-radius: 10rpx;
+  padding: 16rpx;
+}
+
+/* 单品评分 */
+.card-items {
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid var(--border);
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  margin-top: 10rpx;
+  background: var(--bg);
+  border-radius: 10rpx;
+  padding: 12rpx 16rpx;
+  gap: 12rpx;
+}
+.item-thumb {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+  background: #E8E8E8;
+}
+.item-thumb-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rpx;
+  color: var(--text-muted);
+}
+.item-name {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 底部 */
+.bottom-tip {
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--text-muted);
+  padding: 20rpx 0;
+}

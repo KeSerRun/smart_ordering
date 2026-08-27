@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "我的优惠券",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-navbar": "/components/app-navbar/index"
+  }
+}

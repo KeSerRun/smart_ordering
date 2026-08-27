@@ -1,0 +1,18 @@
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+}
+.star {
+  color: #E8E8E8;
+  transition: color 0.15s;
+}
+.star.filled {
+  color: #FFBA00;
+}
+.star.readonly {
+  pointer-events: none;
+}
+.star:not(.readonly):active {
+  transform: scale(1.2);
+}

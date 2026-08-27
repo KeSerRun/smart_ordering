@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "用餐评价",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-navbar": "/components/app-navbar/index",
+    "star-rating": "/components/star-rating/index"
+  }
+}

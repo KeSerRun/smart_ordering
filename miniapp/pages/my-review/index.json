@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "我的评价",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "app-navbar": "/components/app-navbar/index",
+    "star-rating": "/components/star-rating/index",
+    "empty-state": "/components/empty-state/index"
+  }
+}
