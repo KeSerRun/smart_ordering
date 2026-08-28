@@ -9,3 +9,4 @@ export const updateMemberLevelStatus = (id, status) => request.put(`/admin/membe
 export const listMemberPoints = (params) => request.get('/admin/member/points-record/page', { params })
 export const listMemberGrowth = (params) => request.get('/admin/member/growth-record/page', { params })
 export const adjustMemberPoints = (id, d) => request.post(`/admin/member/${id}/points-adjust`, d)
+export const assignMemberLevel = (id, d) => request.put(`/admin/member/${id}/level`, d)
