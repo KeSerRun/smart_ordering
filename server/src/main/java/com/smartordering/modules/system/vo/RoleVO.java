@@ -4,9 +4,10 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * Role view object.
+ * 角色 VO
  *
  * @author smartordering
  */
@@ -19,5 +20,9 @@ public class RoleVO {
     private String code;
     private Integer status;
     private String remark;
+
+    /** 模块权限编码列表：core/ops/sys/kitchen */
+    private List<String> modules;
+
     private LocalDateTime createTime;
 }

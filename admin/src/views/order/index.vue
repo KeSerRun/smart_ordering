@@ -11,6 +11,7 @@
       :data="orders"
       :loading="loading"
       remote
+      :scroll-x="1000"
       :pagination="pagination"
       @update:page="changePage"
     />
@@ -70,7 +71,7 @@ function statusLabel(s) {
 const pagination = computed(() => ({ pageSize: query.value.pageSize, itemCount: total.value }))
 
 const columns = [
-  { title: '订单号', key: 'orderNo' },
+  { title: '订单号', key: 'orderNo', width: 200, ellipsis: { tooltip: true } },
   { title: '桌台', key: 'tableCode', width: 90 },
   { title: '原价', key: 'originalAmount', width: 90 },
   { title: '实付', key: 'actualAmount', width: 90 },
@@ -78,7 +79,7 @@ const columns = [
     title: '状态', key: 'status', width: 100,
     render: (r) => h(NTag, { type: (statusMap[r.status] || ['未知', 'warning'])[1], size: 'small' }, () => statusLabel(r.status))
   },
-  { title: '下单时间', key: 'createTime' },
+  { title: '下单时间', key: 'createTime', width: 165 },
   {
     title: '操作', key: 'action', width: 90,
     render: (r) => h(NButton, { size: 'small', text: true, onClick: () => showDetail(r) }, { default: () => '详情' })
@@ -86,7 +87,7 @@ const columns = [
 ]
 
 const itemColumns = [
-  { title: '菜品', key: 'dishName' },
+  { title: '菜品', key: 'dishName', width: 180, ellipsis: { tooltip: true } },
   { title: '数量', key: 'quantity', width: 70 },
   { title: '单价', key: 'price', width: 80 },
   { title: '小计', key: 'amount', width: 80, render: (r) => (r.isGift ? '赠' : r.amount) }

@@ -15,7 +15,7 @@
         <n-input v-model:value="dishQuery.name" clearable placeholder="菜品名称" style="width: 180px" @keyup.enter="loadDishes" />
         <n-button @click="loadDishes">查询</n-button>
       </n-space>
-      <n-data-table :columns="dishColumns" :data="dishes" :loading="dishLoading" remote :pagination="pagination" @update:page="changePage" />
+      <n-data-table :columns="dishColumns" :data="dishes" :loading="dishLoading" remote :scroll-x="1100" :pagination="pagination" @update:page="changePage" />
     </n-tab-pane>
 
     <!-- 分类 -->
@@ -23,7 +23,7 @@
       <n-space style="margin-bottom: 12px">
         <n-button type="primary" @click="openCategoryModal()">新增分类</n-button>
       </n-space>
-      <n-data-table :columns="categoryColumns" :data="categories" :loading="categoryLoading" />
+      <n-data-table :columns="categoryColumns" :data="categories" :loading="categoryLoading" :scroll-x="800" />
     </n-tab-pane>
 
     <!-- 规格 -->
@@ -32,7 +32,7 @@
         <n-button type="primary" @click="openSpecModal()">新增规格组</n-button>
         <n-text depth="3" style="font-size: 13px">选项可设加价/减价金额，绑定到分类后顾客点餐时可选</n-text>
       </n-space>
-      <n-data-table :columns="specColumns" :data="specGroups" :loading="specLoading" />
+      <n-data-table :columns="specColumns" :data="specGroups" :loading="specLoading" :scroll-x="750" />
     </n-tab-pane>
   </n-tabs>
 
@@ -216,9 +216,9 @@ const dishColumns = [
     title: '图片', key: 'image', width: 60,
     render: (r) => h(NImage, { src: r.image || DEFAULT_IMG, fallbackSrc: DEFAULT_IMG, width: 44, height: 44, objectFit: 'cover', style: 'border-radius: 4px' })
   },
-  { title: '名称', key: 'name' },
-  { title: '分类', key: 'categoryName' },
-  { title: '价格', key: 'price' },
+  { title: '名称', key: 'name', width: 180, ellipsis: { tooltip: true } },
+  { title: '分类', key: 'categoryName', width: 110, render: (r) => r.categoryName || '-' },
+  { title: '价格', key: 'price', width: 80 },
   {
     title: '规格', key: 'specItems', width: 200, ellipsis: { tooltip: true },
     render: (r) => (r.specItems || []).map((g) => `${g.specGroupName}：${(g.optionNames || []).join('/')}`).join('；') || '-'
@@ -243,13 +243,13 @@ const categoryColumns = [
     title: '图片', key: 'image', width: 60,
     render: (r) => h(NImage, { src: r.image || DEFAULT_IMG, fallbackSrc: DEFAULT_IMG, width: 44, height: 44, objectFit: 'cover', style: 'border-radius: 4px' })
   },
-  { title: '名称', key: 'name' },
+  { title: '名称', key: 'name', width: 160, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80 },
   {
     title: '状态', key: 'status', width: 90,
     render: (r) => h(NTag, { type: r.status === 1 ? 'success' : 'default', size: 'small' }, () => (r.status === 1 ? '启用' : '停用'))
   },
-  { title: '规格', key: 'specGroupNames' },
+  { title: '规格', key: 'specGroupNames', width: 180, ellipsis: { tooltip: true }, render: (r) => r.specGroupNames || '-' },
   {
     title: '操作', key: 'action', width: 140,
     render: (r) =>
@@ -261,9 +261,9 @@ const categoryColumns = [
 ]
 
 const specColumns = [
-  { title: '名称', key: 'name' },
+  { title: '名称', key: 'name', width: 140, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80 },
-  { title: '选项', key: 'options', render: (r) => (r.options || []).map((o) => optionText(o)).join('、') },
+  { title: '选项', key: 'options', width: 260, ellipsis: { tooltip: true }, render: (r) => (r.options || []).map((o) => optionText(o)).join('、') || '-' },
   {
     title: '操作', key: 'action', width: 140,
     render: (r) =>

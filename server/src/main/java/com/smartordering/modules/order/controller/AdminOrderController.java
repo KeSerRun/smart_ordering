@@ -2,11 +2,13 @@ package com.smartordering.modules.order.controller;
 
 import com.smartordering.common.result.PageResult;
 import com.smartordering.common.result.Result;
+import com.smartordering.modules.order.dto.AdminOrderCreateDTO;
 import com.smartordering.modules.order.dto.OrderQueryDTO;
 import com.smartordering.modules.order.service.OrderService;
 import com.smartordering.modules.order.vo.OrderVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,10 +50,10 @@ public class AdminOrderController {
         return Result.success(Map.of("amount", 0));
     }
 
-    @Operation(summary = "Create order")
+    @Operation(summary = "Create order (table ordering, dine-in kickoff)")
     @PostMapping
-    public Result<Object> createOrder(@RequestBody Map<String, Object> body) {
-        return Result.success(null);
+    public Result<OrderVO> createOrder(@Valid @RequestBody AdminOrderCreateDTO dto) {
+        return Result.success(orderService.createAdminOrder(dto));
     }
 
     @Operation(summary = "Add item")

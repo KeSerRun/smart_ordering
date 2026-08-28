@@ -4,14 +4,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartordering.common.exception.BusinessException;
 import com.smartordering.common.result.PageResult;
+import com.smartordering.modules.system.Modules;
 import com.smartordering.modules.system.dto.RoleCreateDTO;
 import com.smartordering.modules.system.dto.RoleQueryDTO;
 import com.smartordering.modules.system.dto.RoleUpdateDTO;
 import com.smartordering.modules.system.entity.SysRole;
 import com.smartordering.modules.system.entity.SysRoleMenu;
+import com.smartordering.modules.system.entity.SysRoleModule;
 import com.smartordering.modules.system.entity.SysUserRole;
 import com.smartordering.modules.system.mapper.SysRoleMapper;
 import com.smartordering.modules.system.mapper.SysRoleMenuMapper;
+import com.smartordering.modules.system.mapper.SysRoleModuleMapper;
 import com.smartordering.modules.system.mapper.SysUserRoleMapper;
 import com.smartordering.modules.system.service.SysRoleService;
 import com.smartordering.modules.system.vo.RoleVO;
@@ -35,6 +38,7 @@ public class SysRoleServiceImpl implements SysRoleService {
 
     private final SysRoleMapper roleMapper;
     private final SysRoleMenuMapper roleMenuMapper;
+    private final SysRoleModuleMapper roleModuleMapper;
     private final SysUserRoleMapper userRoleMapper;
 
     @Override
@@ -54,6 +58,7 @@ public class SysRoleServiceImpl implements SysRoleService {
             role.setStatus(1);
         }
         roleMapper.insert(role);
+        saveRoleModules(role.getId(), dto.getModules());
         return role.getId();
     }
 
@@ -78,6 +83,9 @@ public class SysRoleServiceImpl implements SysRoleService {
             role.setRemark(dto.getRemark());
         }
         roleMapper.updateById(role);
+        if (dto.getModules() != null) {
+            saveRoleModules(dto.getId(), dto.getModules());
+        }
     }
 
     @Override
@@ -87,8 +95,10 @@ public class SysRoleServiceImpl implements SysRoleService {
             throw new BusinessException("Role not found");
         }
         roleMenuMapper.delete(new LambdaQueryWrapper<SysRoleMenu>().eq(SysRoleMenu::getRoleId, roleId));
+        roleModuleMapper.delete(new LambdaQueryWrapper<SysRoleModule>().eq(SysRoleModule::getRoleId, roleId));
         userRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, roleId));
-        roleMapper.deleteById(roleId);
+        // 物理删除：唯一索引 uk_code 会被逻辑删除行占用，导致同名角色无法重建
+        roleMapper.physicalDeleteById(roleId);
     }
 
     @Override
@@ -178,6 +188,28 @@ public class SysRoleServiceImpl implements SysRoleService {
     private RoleVO toVO(SysRole role) {
         RoleVO vo = new RoleVO();
         BeanUtils.copyProperties(role, vo);
+        vo.setModules(getRoleModules(role.getId()));
         return vo;
+    }
+
+    // ==================== 模块权限 helpers ====================
+
+    private List<String> getRoleModules(Long roleId) {
+        return roleModuleMapper.selectList(new LambdaQueryWrapper<SysRoleModule>()
+                        .eq(SysRoleModule::getRoleId, roleId))
+                .stream().map(SysRoleModule::getModuleCode).collect(Collectors.toList());
+    }
+
+    /** 全量替换角色模块权限（先删后插） */
+    private void saveRoleModules(Long roleId, List<String> modules) {
+        List<String> normalized = Modules.normalize(modules);
+        roleModuleMapper.delete(new LambdaQueryWrapper<SysRoleModule>()
+                .eq(SysRoleModule::getRoleId, roleId));
+        for (String code : normalized) {
+            SysRoleModule row = new SysRoleModule();
+            row.setRoleId(roleId);
+            row.setModuleCode(code);
+            roleModuleMapper.insert(row);
+        }
     }
 }

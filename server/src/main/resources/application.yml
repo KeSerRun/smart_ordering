@@ -52,6 +52,7 @@ smart:
     order-routing-key: order.created          # 新订单路由键
     table-qrcode-queue: table.qrcode.queue    # 桌台二维码批量生成队列
     table-qrcode-routing-key: table.qrcode.generate  # 桌台二维码批量生成路由键
+    coupon-grant-queue: coupon.grant.queue    # 优惠券发放队列
+    coupon-grant-routing-key: coupon.grant.create   # 优惠券发放路由键
     resend-interval-ms: 15000                 # 可靠消息补偿重发扫描间隔
     max-retry-count: 5                        # 投递最大重试次数，超过标记失败
-

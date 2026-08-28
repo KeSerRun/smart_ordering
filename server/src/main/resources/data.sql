@@ -16,8 +16,8 @@ INSERT IGNORE INTO sys_user (id, username, password, nickname, email, phone, ope
 -- ---------- 用户-角色 ----------
 INSERT IGNORE INTO sys_user_role (user_id, role_id) VALUES (1, 1);
 
--- ---------- 用户-模块（admin 拥有全部模块权限） ----------
-INSERT IGNORE INTO sys_user_module (user_id, module_code) VALUES (1, 'core'), (1, 'ops'), (1, 'sys'), (1, 'kitchen');
+-- ---------- 角色-模块（超级管理员角色拥有全部模块权限） ----------
+INSERT IGNORE INTO sys_role_module (role_id, module_code) VALUES (1, 'core'), (1, 'ops'), (1, 'sys'), (1, 'kitchen');
 
 -- ---------- 菜单（与前端静态菜单对应，权限字符串预留） ----------
 -- 系统管理

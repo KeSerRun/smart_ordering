@@ -64,7 +64,12 @@ public class UserVO implements Serializable {
     private String userType;
 
     /**
-     * 模块权限编码列表：core/ops/sys/kitchen
+     * 分配的角色 ID 列表
+     */
+    private List<Long> roleIds;
+
+    /**
+     * 模块权限编码列表（用户所有角色的模块并集）：core/ops/sys/kitchen
      */
     private List<String> modules;
 

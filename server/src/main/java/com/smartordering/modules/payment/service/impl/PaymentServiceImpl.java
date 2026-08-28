@@ -22,6 +22,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
@@ -41,8 +44,14 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     @Transactional
     public PaymentVO cashPay(CashPayDTO dto) {
-        // 1. Validate order
-        Order order = orderMapper.selectById(dto.getOrderId());
+        // 1. Validate order（orderNo 优先，兼容管理端按订单号收银）
+        Order order;
+        if (StringUtils.hasText(dto.getOrderNo())) {
+            order = orderMapper.selectOne(new LambdaQueryWrapper<Order>()
+                    .eq(Order::getOrderNo, dto.getOrderNo()));
+        } else {
+            order = dto.getOrderId() == null ? null : orderMapper.selectById(dto.getOrderId());
+        }
         if (order == null) {
             throw new BusinessException("Order not found");
         }
@@ -60,7 +69,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 3. Create payment record
         PaymentRecord record = new PaymentRecord();
-        record.setOrderId(dto.getOrderId());
+        record.setOrderId(order.getId());
         record.setPaymentNo(generatePaymentNo());
         record.setPaymentMethod(2);  // Cash
         record.setAmount(actualAmount);
@@ -76,7 +85,8 @@ public class PaymentServiceImpl implements PaymentService {
         // 5. Build response
         PaymentVO vo = new PaymentVO();
         vo.setId(record.getId());
-        vo.setOrderId(dto.getOrderId());
+        vo.setOrderId(order.getId());
+        vo.setOrderNo(order.getOrderNo());
         vo.setPaymentNo(record.getPaymentNo());
         vo.setPaymentMethod(2);
         vo.setAmount(actualAmount);
@@ -85,7 +95,8 @@ public class PaymentServiceImpl implements PaymentService {
         vo.setStatus(1);
         vo.setCreateTime(record.getCreateTime());
 
-        log.info("Cash payment success: orderId={}, amount={}, change={}", dto.getOrderId(), actualAmount, change);
+        log.info("Cash payment success: orderId={}, orderNo={}, amount={}, change={}",
+                order.getId(), order.getOrderNo(), actualAmount, change);
         return vo;
     }
 
@@ -107,24 +118,39 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private String generatePaymentNo() {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-            int random = ThreadLocalRandom.current().nextInt(100, 999);
-            return "PY" + timestamp + random;
-        }
-
-        @Override
-        public PageResult<PaymentVO> listPaymentsForAdmin(int pageNum, int pageSize, Integer status, String paymentNo) {
-            LambdaQueryWrapper<PaymentRecord> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(status != null, PaymentRecord::getStatus, status)
-                    .like(StringUtils.hasText(paymentNo), PaymentRecord::getPaymentNo, paymentNo)
-                    .orderByDesc(PaymentRecord::getCreateTime);
-            Page<PaymentRecord> page = new Page<>(pageNum, pageSize);
-            paymentRecordMapper.selectPage(page, wrapper);
-            List<PaymentVO> list = page.getRecords().stream().map(r -> {
-                PaymentVO vo = new PaymentVO();
-                BeanUtils.copyProperties(r, vo);
-                return vo;
-            }).collect(Collectors.toList());
-            return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
-        }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        int random = ThreadLocalRandom.current().nextInt(100, 999);
+        return "PY" + timestamp + random;
     }
+
+    @Override
+    public PageResult<PaymentVO> listPaymentsForAdmin(int pageNum, int pageSize, Integer status, String paymentNo) {
+        LambdaQueryWrapper<PaymentRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(status != null, PaymentRecord::getStatus, status)
+                .like(StringUtils.hasText(paymentNo), PaymentRecord::getPaymentNo, paymentNo)
+                .orderByDesc(PaymentRecord::getCreateTime);
+        Page<PaymentRecord> page = new Page<>(pageNum, pageSize);
+        paymentRecordMapper.selectPage(page, wrapper);
+        List<PaymentVO> list = page.getRecords().stream().map(r -> {
+            PaymentVO vo = new PaymentVO();
+            BeanUtils.copyProperties(r, vo);
+            return vo;
+        }).collect(Collectors.toList());
+
+        // 联查业务订单号：payment_record 只存 order_id
+        Set<Long> orderIds = list.stream()
+                .map(PaymentVO::getOrderId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (!orderIds.isEmpty()) {
+            Map<Long, String> orderNoMap = orderMapper.selectBatchIds(orderIds).stream()
+                    .collect(Collectors.toMap(Order::getId, Order::getOrderNo));
+            list.forEach(vo -> {
+                if (vo.getOrderId() != null) {
+                    vo.setOrderNo(orderNoMap.get(vo.getOrderId()));
+                }
+            });
+        }
+        return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
+    }
+}

@@ -51,7 +51,8 @@ const MODULE_GROUPS = {
     label: '点餐核心', key: 'core', children: [
       { label: '菜品管理', key: 'dish' },
       { label: '桌台管理', key: 'table' },
-      { label: '订单管理', key: 'order' }
+      { label: '订单管理', key: 'order' },
+      { label: '支付管理', key: 'payment' }
     ]
   },
   kitchen: {
@@ -63,7 +64,6 @@ const MODULE_GROUPS = {
     label: '运营管理', key: 'ops', children: [
       { label: '会员管理', key: 'member' },
       { label: '优惠券', key: 'coupon' },
-      { label: '支付管理', key: 'payment' },
       { label: '评价管理', key: 'review' },
       { label: '反馈管理', key: 'feedback' },
       { label: '首页轮播', key: 'banner' }

@@ -2,6 +2,8 @@ package com.smartordering.modules.system.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.crypto.digest.BCrypt;
+import cn.hutool.http.useragent.UserAgent;
+import cn.hutool.http.useragent.UserAgentUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartordering.common.exception.BusinessException;
@@ -14,25 +16,25 @@ import com.smartordering.modules.system.dto.RegisterDTO;
 import com.smartordering.modules.system.dto.UserCreateDTO;
 import com.smartordering.modules.system.dto.UserQueryDTO;
 import com.smartordering.modules.system.dto.UserUpdateDTO;
+import com.smartordering.modules.system.entity.SysRoleModule;
 import com.smartordering.modules.system.entity.SysUser;
-import com.smartordering.modules.system.entity.SysUserModule;
+import com.smartordering.modules.system.entity.SysUserRole;
+import com.smartordering.modules.system.mapper.SysRoleModuleMapper;
 import com.smartordering.modules.system.mapper.SysUserMapper;
-import com.smartordering.modules.system.mapper.SysUserModuleMapper;
+import com.smartordering.modules.system.mapper.SysUserRoleMapper;
+import com.smartordering.modules.system.service.SysLogService;
 import com.smartordering.modules.system.service.SysUserService;
 import com.smartordering.modules.system.vo.LoginVO;
 import com.smartordering.modules.system.vo.UserInfoVO;
 import com.smartordering.modules.system.vo.UserVO;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -44,15 +46,14 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SysUserServiceImpl implements SysUserService {
 
-    /** 全部模块编码（与前端侧边栏分组一致） */
-    public static final List<String> ALL_MODULES = List.of("core", "ops", "sys", "kitchen");
-
     /** 内置超级管理员用户名：不可删除、不可禁用 */
     private static final String SUPER_ADMIN = "admin";
 
     private final SysUserMapper sysUserMapper;
-    private final SysUserModuleMapper sysUserModuleMapper;
-    private final PermissionCacheServiceImpl permissionCacheService;
+        private final SysUserRoleMapper sysUserRoleMapper;
+        private final SysRoleModuleMapper sysRoleModuleMapper;
+        private final SysLogService sysLogService;
+        private final PermissionCacheServiceImpl permissionCacheService;
 
     @Override
     public void register(RegisterDTO dto) {
@@ -71,29 +72,40 @@ public class SysUserServiceImpl implements SysUserService {
     }
 
     @Override
-    public LoginVO login(LoginDTO dto) {
-        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysUser::getUsername, dto.getUsername());
-        SysUser user = sysUserMapper.selectOne(wrapper);
+        public LoginVO login(LoginDTO dto, HttpServletRequest request) {
+            LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(SysUser::getUsername, dto.getUsername());
+            SysUser user = sysUserMapper.selectOne(wrapper);
 
-        if (user == null) {
-            throw new BusinessException("User not found");
-        }
-        if (user.getStatus() == 0) {
-            throw new BusinessException("Account is disabled");
-        }
-        if (!BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
-            throw new BusinessException("Invalid password");
-        }
+            // 客户端信息（IP / 浏览器 / 操作系统），成功与失败均记录登录日志
+                        // 注意：hutool 5.8 ServletUtil 依赖 javax.servlet，本项目为 jakarta（Spring Boot 3），手写 IP 提取
+                        String ip = clientIp(request);
+                        UserAgent ua = UserAgentUtil.parse(request.getHeader("User-Agent"));
+            String browser = ua == null ? null : ua.getBrowser().getName();
+            String os = ua == null ? null : ua.getOs().getName();
 
-        StpUtil.login(user.getId());
+            if (user == null) {
+                sysLogService.recordLogin(dto.getUsername(), ip, browser, os, 0, "账号不存在");
+                throw new BusinessException("User not found");
+            }
+            if (user.getStatus() == 0) {
+                sysLogService.recordLogin(dto.getUsername(), ip, browser, os, 0, "账号已禁用");
+                throw new BusinessException("Account is disabled");
+            }
+            if (!BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
+                sysLogService.recordLogin(dto.getUsername(), ip, browser, os, 0, "密码错误");
+                throw new BusinessException("Invalid password");
+            }
 
-        LoginVO vo = new LoginVO();
-        vo.setToken(StpUtil.getTokenValue());
-        vo.setTokenName("Authorization");
-        vo.setUserInfo(buildUserInfo(user));
-        return vo;
-    }
+            StpUtil.login(user.getId());
+            sysLogService.recordLogin(user.getUsername(), ip, browser, os, 1, null);
+
+            LoginVO vo = new LoginVO();
+            vo.setToken(StpUtil.getTokenValue());
+            vo.setTokenName("Authorization");
+            vo.setUserInfo(buildUserInfo(user));
+            return vo;
+        }
 
     @Override
     public UserInfoVO getCurrentUserInfo() {
@@ -118,15 +130,10 @@ public class SysUserServiceImpl implements SysUserService {
                 .orderByDesc(SysUser::getCreateTime);
 
         Page<SysUser> page = new Page<>(pageNum, pageSize);
-                sysUserMapper.selectPage(page, wrapper);
-                List<UserVO> list = page.getRecords().stream().map(u -> {
-                    UserVO vo = new UserVO();
-                    BeanUtils.copyProperties(u, vo);
-                    vo.setModules(getUserModules(u.getId()));
-                    return vo;
-                }).collect(Collectors.toList());
-                return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
-            }
+        sysUserMapper.selectPage(page, wrapper);
+        List<UserVO> list = page.getRecords().stream().map(this::toVO).collect(Collectors.toList());
+        return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
+    }
 
     @Override
     public void updateUserInfo(UserUpdateDTO dto) {
@@ -185,18 +192,6 @@ public class SysUserServiceImpl implements SysUserService {
         }
     }
 
-    private UserInfoVO buildUserInfo(SysUser user) {
-        UserInfoVO vo = new UserInfoVO();
-        vo.setId(user.getId());
-        vo.setUsername(user.getUsername());
-        vo.setNickname(user.getNickname());
-        vo.setAvatar(user.getAvatar());
-        vo.setRoles(permissionCacheService.getUserRoles(user.getId()));
-        vo.setPermissions(permissionCacheService.getUserPermissions(user.getId()));
-        vo.setModules(getUserModules(user.getId()));
-        return vo;
-    }
-
     @Override
     @Transactional
     public Long createUser(UserCreateDTO dto) {
@@ -214,7 +209,7 @@ public class SysUserServiceImpl implements SysUserService {
         user.setUserType(StringUtils.hasText(dto.getUserType()) ? dto.getUserType() : "BACKEND");
         user.setStatus(dto.getStatus() == null ? 1 : dto.getStatus());
         sysUserMapper.insert(user);
-        saveUserModules(user.getId(), dto.getModules());
+        saveUserRoles(user.getId(), dto.getRoleIds());
         return user.getId();
     }
 
@@ -232,8 +227,8 @@ public class SysUserServiceImpl implements SysUserService {
         update.setPhone(dto.getPhone());
         update.setStatus(dto.getStatus());
         sysUserMapper.updateById(update);
-        if (dto.getModules() != null) {
-            saveUserModules(dto.getId(), dto.getModules());
+        if (dto.getRoleIds() != null) {
+            saveUserRoles(dto.getId(), dto.getRoleIds());
             permissionCacheService.clearUserCache(dto.getId());
         }
     }
@@ -249,60 +244,90 @@ public class SysUserServiceImpl implements SysUserService {
         if (SUPER_ADMIN.equals(user.getUsername())) {
             throw new BusinessException("内置管理员账号不可删除");
         }
-        // 逻辑删除用户 + 清理关联：用户-模块
-        sysUserMapper.deleteById(userId);
-        sysUserModuleMapper.delete(new LambdaQueryWrapper<SysUserModule>()
-                .eq(SysUserModule::getUserId, userId));
+        // 物理删除用户 + 清理关联：用户-角色（逻辑删除会占用 uk_username，同名账户无法重建）
+                sysUserMapper.physicalDeleteById(userId);
+                sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getUserId, userId));
         StpUtil.kickout(userId);
-        permissionCacheService.clearUserCache(userId);
-    }
-
-    @Override
-    @Transactional
-    public void updateUserModules(Long userId, List<String> modules) {
-        requireUser(userId);
-        saveUserModules(userId, modules);
         permissionCacheService.clearUserCache(userId);
     }
 
     // ==================== helpers ====================
 
+    private UserVO toVO(SysUser user) {
+        UserVO vo = new UserVO();
+        BeanUtils.copyProperties(user, vo);
+        vo.setRoleIds(getUserRoleIds(user.getId()));
+        vo.setModules(getUserModules(user.getId()));
+        return vo;
+    }
+
+    private UserInfoVO buildUserInfo(SysUser user) {
+        UserInfoVO vo = new UserInfoVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setNickname(user.getNickname());
+        vo.setAvatar(user.getAvatar());
+        vo.setRoles(permissionCacheService.getUserRoles(user.getId()));
+        vo.setPermissions(permissionCacheService.getUserPermissions(user.getId()));
+        vo.setModules(getUserModules(user.getId()));
+        return vo;
+    }
+
     private SysUser requireUser(Long userId) {
-        SysUser user = sysUserMapper.selectById(userId);
-        if (user == null) {
-            throw new BusinessException("User not found");
+            SysUser user = sysUserMapper.selectById(userId);
+            if (user == null) {
+                throw new BusinessException("User not found");
+            }
+            return user;
         }
-        return user;
+
+        /** 提取客户端 IP：X-Forwarded-For / X-Real-IP / RemoteAddr，兼容反向代理 */
+        private String clientIp(HttpServletRequest request) {
+            String ip = request.getHeader("X-Forwarded-For");
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getHeader("X-Real-IP");
+            }
+            if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+                ip = request.getRemoteAddr();
+            }
+            if (ip != null && ip.contains(",")) {
+                ip = ip.split(",")[0].trim();
+            }
+            return ip;
+        }
+
+    private List<Long> getUserRoleIds(Long userId) {
+        return sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getUserId, userId))
+                .stream().map(SysUserRole::getRoleId).collect(Collectors.toList());
     }
 
-    /** 合法性校验 + 去重，未知模块编码忽略 */
-    private List<String> normalizeModules(List<String> modules) {
-        if (modules == null || modules.isEmpty()) {
-            return Collections.emptyList();
-        }
-        Set<String> valid = new HashSet<>(ALL_MODULES);
-        return modules.stream().distinct().filter(valid::contains).collect(Collectors.toList());
-    }
-
+    /**
+     * 用户可访问的模块 = 其所有角色的模块权限并集（RBAC：角色管权限，用户管账户+角色）
+     */
     private List<String> getUserModules(Long userId) {
-        return sysUserModuleMapper.selectList(new LambdaQueryWrapper<SysUserModule>()
-                        .eq(SysUserModule::getUserId, userId))
-                .stream().map(SysUserModule::getModuleCode).collect(Collectors.toList());
+        List<Long> roleIds = getUserRoleIds(userId);
+        if (roleIds.isEmpty()) {
+            return List.of();
+        }
+        return sysRoleModuleMapper.selectList(new LambdaQueryWrapper<SysRoleModule>()
+                        .in(SysRoleModule::getRoleId, roleIds))
+                .stream().map(SysRoleModule::getModuleCode).distinct().collect(Collectors.toList());
     }
 
-    /** 全量替换用户模块权限（先删后插） */
-    private void saveUserModules(Long userId, List<String> modules) {
-        List<String> normalized = normalizeModules(modules);
-        sysUserModuleMapper.delete(new LambdaQueryWrapper<SysUserModule>()
-                .eq(SysUserModule::getUserId, userId));
-        if (normalized.isEmpty()) {
+    /** 全量替换用户角色（先删后插） */
+    private void saveUserRoles(Long userId, List<Long> roleIds) {
+        sysUserRoleMapper.delete(new LambdaQueryWrapper<SysUserRole>()
+                .eq(SysUserRole::getUserId, userId));
+        if (roleIds == null || roleIds.isEmpty()) {
             return;
         }
-        for (String code : normalized) {
-            SysUserModule row = new SysUserModule();
+        for (Long roleId : roleIds.stream().distinct().collect(Collectors.toList())) {
+            SysUserRole row = new SysUserRole();
             row.setUserId(userId);
-            row.setModuleCode(code);
-            sysUserModuleMapper.insert(row);
+            row.setRoleId(roleId);
+            sysUserRoleMapper.insert(row);
         }
     }
 }

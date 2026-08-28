@@ -34,6 +34,6 @@ public class UserCreateDTO implements Serializable {
 
     private Integer status;
 
-    /** 模块权限编码：core/ops/sys/kitchen */
-    private List<String> modules;
+    /** 分配的角色 ID 列表（角色管理里给角色配置模块权限） */
+    private List<Long> roleIds;
 }

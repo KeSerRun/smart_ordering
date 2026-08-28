@@ -16,8 +16,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 /**
  * Admin user management controller.
  *
@@ -87,10 +85,4 @@ public class SysUserController {
         return Result.success();
     }
 
-    @Operation(summary = "Replace user's module grants (core/ops/sys/kitchen)")
-    @PutMapping("/{userId}/modules")
-    public Result<Void> updateModules(@PathVariable Long userId, @RequestBody List<String> modules) {
-        userService.updateUserModules(userId, modules);
-        return Result.success();
-    }
 }

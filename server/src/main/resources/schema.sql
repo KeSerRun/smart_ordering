@@ -640,10 +640,38 @@ CREATE TABLE IF NOT EXISTS sys_operation_log (
     KEY idx_operation_log_username (username)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
 
--- 用户-模块权限关联表（模块编码：core 点餐核心 / ops 运营管理 / sys 系统管理 / kitchen 后厨任务）
-CREATE TABLE IF NOT EXISTS sys_user_module (
-    user_id     BIGINT NOT NULL COMMENT '用户ID',
+-- 角色-模块权限关联表（模块编码：core 点餐核心 / ops 运营管理 / sys 系统管理 / kitchen 后厨任务）
+CREATE TABLE IF NOT EXISTS sys_role_module (
+    role_id     BIGINT NOT NULL COMMENT '角色ID',
     module_code VARCHAR(20) NOT NULL COMMENT '模块编码：core/ops/sys/kitchen',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (user_id, module_code)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户模块权限表';
+    PRIMARY KEY (role_id, module_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色模块权限表';
+
+-- 发券任务表（后台发放优惠券，MQ 异步任务）
+CREATE TABLE IF NOT EXISTS coupon_grant_task (
+    id              BIGINT NOT NULL COMMENT '任务ID',
+    template_id     BIGINT NOT NULL COMMENT '模板ID',
+    template_name   VARCHAR(100) COMMENT '模板名称快照',
+    grant_mode      INT NOT NULL COMMENT '发放方式: 1指定用户 2全部用户 3按会员等级',
+    target_count    INT NOT NULL DEFAULT 0 COMMENT '目标人数',
+    success_count   INT NOT NULL DEFAULT 0 COMMENT '成功发放数',
+    fail_count      INT NOT NULL DEFAULT 0 COMMENT '失败数',
+    task_status     INT NOT NULL DEFAULT 0 COMMENT '状态: 0待处理 1处理中 2成功 3失败',
+    batch_count     INT NOT NULL DEFAULT 1 COMMENT '总批次数',
+    finished_batch  INT NOT NULL DEFAULT 0 COMMENT '已完成批次数',
+    level_ids       VARCHAR(255) COMMENT '按等级发放时的等级ID(逗号分隔)',
+    user_ids        VARCHAR(512) COMMENT '指定用户ID(逗号分隔, grantMode=1时)',
+    remark          VARCHAR(255) COMMENT '备注',
+    last_error      VARCHAR(500) COMMENT '最近错误',
+    started_time    DATETIME COMMENT '开始时间',
+    finished_time   DATETIME COMMENT '完成时间',
+    create_by       BIGINT COMMENT '创建人',
+    update_by       BIGINT COMMENT '更新人',
+    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted         INT NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0未删 1已删',
+    PRIMARY KEY (id),
+    KEY idx_grant_task_template (template_id),
+    KEY idx_grant_task_status (task_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='发券任务表';

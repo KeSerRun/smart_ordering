@@ -8,7 +8,7 @@
       </n-space>
     </n-space>
 
-    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" @update:page="onPageChange" />
+    <n-data-table :columns="columns" :data="rows" :loading="loading" :scroll-x="1200" :pagination="pagination" @update:page="onPageChange" />
 
     <!-- 新增 / 编辑用户 -->
     <n-modal v-model:show="showModal" preset="card" :title="form.id ? '编辑用户' : '新增用户'" style="width:520px">
@@ -25,8 +25,8 @@
         <n-form-item label="状态">
           <n-switch :value="form.status === 1" @update:value="(v) => (form.status = v ? 1 : 0)" />
         </n-form-item>
-        <n-form-item label="模块权限">
-          <n-select v-model:value="form.modules" multiple :options="moduleOptions" placeholder="勾选可访问的模块" />
+        <n-form-item label="分配角色">
+          <n-select v-model:value="form.roleIds" multiple :options="roleOptions" placeholder="给账户分配角色（模块权限在角色管理中配置）" />
         </n-form-item>
       </n-form>
       <template #footer>
@@ -51,21 +51,23 @@
 </template>
 
 <script setup>
-import { h, ref, onMounted } from 'vue'
+import { h, ref, computed, onMounted } from 'vue'
 import { NSpace, NInput, NButton, NDataTable, NModal, NForm, NFormItem,
   NSelect, NSwitch, NTag, useMessage } from 'naive-ui'
-import { listUsers, createUser, updateUser, deleteUser, updateUserStatus, resetUserPassword } from '@/api/system'
+import { listUsers, createUser, updateUser, deleteUser, updateUserStatus, resetUserPassword, listAllRoles } from '@/api/system'
 
 const message = useMessage()
 
-// 模块编码与侧边栏分组一致：core 点餐核心 / kitchen 后厨任务 / ops 运营管理 / sys 系统管理
-const moduleOptions = [
-  { label: '点餐核心（菜品/桌台/订单）', value: 'core' },
-  { label: '后厨任务', value: 'kitchen' },
-  { label: '运营管理（会员/券/支付/评价/反馈/轮播）', value: 'ops' },
-  { label: '系统管理（用户/角色/日志/MQ）', value: 'sys' }
-]
+// 模块编码与侧边栏分组一致（用户在角色分配中继承模块权限，此处仅展示）
 const moduleTagMap = { core: '点餐核心', kitchen: '后厨任务', ops: '运营管理', sys: '系统管理' }
+
+const roles = ref([])
+const roleOptions = computed(() => roles.value.map((r) => ({ label: r.name, value: r.id })))
+const roleNameMap = computed(() => {
+  const m = {}
+  roles.value.forEach((r) => (m[r.id] = r.name))
+  return m
+})
 
 const rows = ref([])
 const loading = ref(false)
@@ -76,21 +78,28 @@ const showModal = ref(false)
 const showPwdModal = ref(false)
 const pwdTarget = ref(null)
 const pwdForm = ref({ newPassword: '123456' })
-const form = ref({ id: null, username: '', password: '123456', nickname: '', email: '', phone: '', status: 1, modules: [] })
+const form = ref({ id: null, username: '', password: '123456', nickname: '', email: '', phone: '', status: 1, roleIds: [] })
 const pagination = ref({ page: 1, pageSize: 10, itemCount: 0 })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 90 },
   { title: '用户名', key: 'username', width: 100 },
-  { title: '昵称', key: 'nickname' },
-  { title: '邮箱', key: 'email' },
+  { title: '昵称', key: 'nickname', width: 140, ellipsis: { tooltip: true }, render: (r) => r.nickname || '-' },
+  { title: '邮箱', key: 'email', width: 180, ellipsis: { tooltip: true }, render: (r) => r.email || '-' },
   { title: '手机', key: 'phone', width: 120 },
   {
     title: '状态', key: 'status', width: 70,
     render: (r) => h(NTag, { type: r.status === 1 ? 'success' : 'default', size: 'small' }, () => (r.status === 1 ? '启用' : '禁用'))
   },
   {
-    title: '模块权限', key: 'modules', width: 220,
+    title: '角色', key: 'roleIds', width: 150,
+    render: (r) =>
+      (r.roleIds || []).length
+        ? h(NSpace, { size: 4 }, () => (r.roleIds || []).map((rid) =>
+            h(NTag, { size: 'small', type: 'info' }, () => roleNameMap.value[rid] || rid)))
+        : h('span', { style: 'color:#bbb' }, '未分配')
+  },
+  {
+    title: '模块权限', key: 'modules', width: 200,
     render: (r) =>
       (r.modules || []).length
         ? h(NSpace, { size: 4 }, () => (r.modules || []).map((m) =>
@@ -131,8 +140,8 @@ const onPageChange = (p) => {
 
 const openModal = (row) => {
   form.value = row
-    ? { ...row, password: '123456' }
-    : { id: null, username: '', password: '123456', nickname: '', email: '', phone: '', status: 1, modules: [] }
+    ? { ...row, password: '123456', roleIds: row.roleIds || [] }
+    : { id: null, username: '', password: '123456', nickname: '', email: '', phone: '', status: 1, roleIds: [] }
   showModal.value = true
 }
 
@@ -184,5 +193,8 @@ const doResetPwd = async () => {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  listAllRoles().then((d) => (roles.value = d || [])).catch(() => {})
+})
 </script>

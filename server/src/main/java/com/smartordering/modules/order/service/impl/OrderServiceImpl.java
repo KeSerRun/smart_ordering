@@ -1,5 +1,6 @@
 package com.smartordering.modules.order.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartordering.common.exception.BusinessException;
@@ -7,7 +8,10 @@ import com.smartordering.common.result.PageResult;
 import com.smartordering.modules.cart.service.CartService;
 import com.smartordering.modules.cart.vo.CartItemVO;
 import com.smartordering.modules.cart.vo.CartVO;
+import com.smartordering.modules.dish.entity.Dish;
+import com.smartordering.modules.dish.mapper.DishMapper;
 import com.smartordering.modules.mq.service.ReliableMessageService;
+import com.smartordering.modules.order.dto.AdminOrderCreateDTO;
 import com.smartordering.modules.order.dto.OrderCreateDTO;
 import com.smartordering.modules.order.dto.OrderCreatedEvent;
 import com.smartordering.modules.order.dto.OrderQueryDTO;
@@ -30,6 +34,7 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -48,10 +53,11 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
-    private final OrderItemMapper orderItemMapper;
-    private final CartService cartService;
-    private final DiningTableMapper diningTableMapper;
-    private final ReliableMessageService reliableMessageService;
+        private final OrderItemMapper orderItemMapper;
+        private final CartService cartService;
+        private final DiningTableMapper diningTableMapper;
+        private final DishMapper dishMapper;
+        private final ReliableMessageService reliableMessageService;
 
     @Override
     @Transactional
@@ -119,24 +125,133 @@ public class OrderServiceImpl implements OrderService {
         cartService.clearCart(userId, dto.getTableId());
 
         log.info("Order created: orderNo={}, tableId={}, amount={}", order.getOrderNo(), dto.getTableId(), originalAmount);
-        return getOrderDetail(order.getId());
-    }
+                return getOrderDetail(order.getId());
+            }
 
-    /**
-     * Build the order-created event payload (written into the reliable-message outbox,
-     * published to RabbitMQ, then broadcast to the kitchen screen).
-     */
-    private OrderCreatedEvent buildOrderCreatedEvent(Order order, Long userId, CartVO cart) {
-        List<OrderCreatedEvent.Item> items = cart.getItems().stream()
-                .map(i -> OrderCreatedEvent.Item.builder()
-                        .dishId(i.getDishId())
-                        .dishName(i.getDishName())
-                        .quantity(i.getQuantity())
-                        .amount(i.getAmount())
-                        .remark(i.getRemark())
-                        .build())
-                .collect(Collectors.toList());
-        return OrderCreatedEvent.builder()
+            /**
+             * 管理端点餐：桌台开台直接下单（不走购物车）。
+             * 校验桌台空闲 → 汇总菜品金额 → 建订单与明细 → 桌台置占用 → 发 MQ 后厨事件。
+             */
+            @Override
+            @Transactional
+            public OrderVO createAdminOrder(AdminOrderCreateDTO dto) {
+                if (dto.getItems() == null || dto.getItems().isEmpty()) {
+                    throw new BusinessException("请至少选择一个菜品");
+                }
+                DiningTable table = diningTableMapper.selectById(dto.getTableId());
+                if (table == null) {
+                    throw new BusinessException("桌台不存在");
+                }
+                if (table.getStatus() != null && table.getStatus() != 0) {
+                    throw new BusinessException("桌台当前不是空闲状态，无法开台点餐");
+                }
+
+                // 汇总菜品与金额
+                BigDecimal originalAmount = BigDecimal.ZERO;
+                List<Object[]> details = new ArrayList<>();
+                for (AdminOrderCreateDTO.Item item : dto.getItems()) {
+                    Dish dish = dishMapper.selectById(item.getDishId());
+                    if (dish == null || dish.getStatus() == null || dish.getStatus() != 1) {
+                        throw new BusinessException("菜品不存在或已下架: " + item.getDishId());
+                    }
+                    BigDecimal amount = dish.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+                    originalAmount = originalAmount.add(amount);
+                    details.add(new Object[]{dish, item.getQuantity(), amount});
+                }
+
+                // 建单
+                Order order = new Order();
+                order.setOrderNo(generateOrderNo());
+                order.setTableId(table.getId());
+                order.setTableCode(table.getCode());
+                order.setOriginalAmount(originalAmount);
+                order.setDiscountRate(BigDecimal.ONE);
+                order.setActualAmount(originalAmount);
+                order.setPointsUsed(0);
+                order.setPointsDiscountAmount(BigDecimal.ZERO);
+                order.setPaidAmount(BigDecimal.ZERO);
+                order.setStatus(0);
+                order.setPaymentMode(1);
+                order.setOrderType(0);
+                order.setRemark(dto.getRemark());
+                orderMapper.insert(order);
+
+                // 订单项
+                List<OrderCreatedEvent.Item> eventItems = new ArrayList<>();
+                for (Object[] row : details) {
+                    Dish dish = (Dish) row[0];
+                    int qty = (Integer) row[1];
+                    BigDecimal amount = (BigDecimal) row[2];
+                    OrderItem oi = new OrderItem();
+                    oi.setOrderId(order.getId());
+                    oi.setDishId(dish.getId());
+                    oi.setDishName(dish.getName());
+                    oi.setDishImage(dish.getImage());
+                    oi.setPrice(dish.getPrice());
+                    oi.setQuantity(qty);
+                    oi.setAmount(amount);
+                    oi.setRemark(null);
+                    oi.setStatus(0);
+                    oi.setPaymentStatus(0);
+                    oi.setIsGift(0);
+                    oi.setAddedAt(LocalDateTime.now());
+                    orderItemMapper.insert(oi);
+                    eventItems.add(OrderCreatedEvent.Item.builder()
+                            .dishId(dish.getId()).dishName(dish.getName())
+                            .quantity(qty).amount(amount).build());
+                }
+
+                // 桌台置占用
+                DiningTable update = new DiningTable();
+                update.setId(table.getId());
+                update.setStatus(1);
+                diningTableMapper.updateById(update);
+
+                // 可靠消息：发 MQ 后厨事件（同 App 下单链路）
+                Long userId = StpUtil.getLoginIdAsLong();
+                reliableMessageService.send(
+                        "ORDER:" + order.getOrderNo(),
+                        "order.created",
+                        "NEW_ORDER",
+                        "ORDER",
+                        String.valueOf(order.getId()),
+                        OrderCreatedEvent.builder()
+                                .messageKey("ORDER:" + order.getOrderNo())
+                                .orderId(order.getId())
+                                .orderNo(order.getOrderNo())
+                                .tableId(order.getTableId())
+                                .tableCode(order.getTableCode())
+                                .orderType(order.getOrderType())
+                                .paymentMode(order.getPaymentMode())
+                                .status(order.getStatus())
+                                .originalAmount(originalAmount)
+                                .actualAmount(originalAmount)
+                                .remark(order.getRemark())
+                                .userId(userId)
+                                .createdAt(LocalDateTime.now())
+                                .items(eventItems)
+                                .build());
+
+                log.info("Admin order created: orderNo={}, tableId={}, amount={}",
+                        order.getOrderNo(), dto.getTableId(), originalAmount);
+                return getOrderDetail(order.getId());
+            }
+
+            /**
+             * Build the order-created event payload (written into the reliable-message outbox,
+             * published to RabbitMQ, then broadcast to the kitchen screen).
+             */
+            private OrderCreatedEvent buildOrderCreatedEvent(Order order, Long userId, CartVO cart) {
+                List<OrderCreatedEvent.Item> items = cart.getItems().stream()
+                        .map(i -> OrderCreatedEvent.Item.builder()
+                                .dishId(i.getDishId())
+                                .dishName(i.getDishName())
+                                .quantity(i.getQuantity())
+                                .amount(i.getAmount())
+                                .remark(i.getRemark())
+                                .build())
+                        .collect(Collectors.toList());
+                return OrderCreatedEvent.builder()
                 .messageKey("ORDER:" + order.getOrderNo())
                 .orderId(order.getId())
                 .orderNo(order.getOrderNo())
@@ -185,9 +300,10 @@ public class OrderServiceImpl implements OrderService {
         public PageResult<OrderVO> listOrdersForAdmin(int pageNum, int pageSize, OrderQueryDTO dto) {
             LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
                     if (dto != null) {
-                        wrapper.eq(dto.getStatus() != null, Order::getStatus, dto.getStatus())
-                                .eq(dto.getTableId() != null, Order::getTableId, dto.getTableId())
-                                .like(StringUtils.hasText(dto.getOrderNo()), Order::getOrderNo, dto.getOrderNo());
+                                            wrapper.eq(dto.getStatus() != null, Order::getStatus, dto.getStatus())
+                                                    .eq(dto.getTableId() != null, Order::getTableId, dto.getTableId())
+                                                    .like(StringUtils.hasText(dto.getTableCode()), Order::getTableCode, dto.getTableCode())
+                                                    .like(StringUtils.hasText(dto.getOrderNo()), Order::getOrderNo, dto.getOrderNo());
                         if (dto.getStartDate() != null) {
                             wrapper.ge(Order::getCreateTime, dto.getStartDate().atStartOfDay());
                         }

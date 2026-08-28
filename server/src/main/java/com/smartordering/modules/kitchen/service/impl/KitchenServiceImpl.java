@@ -133,6 +133,23 @@ public class KitchenServiceImpl implements KitchenService {
     }
 
     @Override
+    @Transactional
+    public int autoAcceptByOrder(Long orderId) {
+        List<OrderItem> items = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+                        .eq(OrderItem::getStatus, 0));
+        for (OrderItem item : items) {
+            item.setStatus(1);
+            orderItemMapper.updateById(item);
+        }
+        if (!items.isEmpty()) {
+            log.info("Kitchen auto-accept: orderId={}, accepted={}", orderId, items.size());
+        }
+        return items.size();
+    }
+
+    @Override
     public boolean getAutoAcceptEnabled() {
         SysConfig config = sysConfigMapper.selectOne(
                 new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getConfigKey, AUTO_ACCEPT_KEY));

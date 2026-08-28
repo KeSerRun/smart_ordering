@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * 发券 DTO
  *
-
+ * @author smartordering
  */
 @Data
 public class CouponGrantDTO implements Serializable {
@@ -28,17 +28,22 @@ public class CouponGrantDTO implements Serializable {
     private Long templateId;
 
     /**
-     * 发放方式（1指定用户 2全部用户）
+     * 发放方式（1指定用户 2全部用户 3按会员等级）
      */
     @NotNull(message = "发放方式不能为空")
     @Min(value = 1, message = "发放方式不正确")
-    @Max(value = 2, message = "发放方式不正确")
+    @Max(value = 3, message = "发放方式不正确")
     private Integer grantMode;
 
     /**
-     * 指定用户ID列表
+     * 指定用户ID列表（grantMode=1 时必填）
      */
     private List<Long> userIds;
+
+    /**
+     * 指定会员等级ID列表（grantMode=3 时必填，只发给这些等级下的会员）
+     */
+    private List<Long> levelIds;
 
     /**
      * 备注

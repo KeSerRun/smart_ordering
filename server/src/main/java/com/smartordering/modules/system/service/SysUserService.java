@@ -12,8 +12,7 @@ import com.smartordering.modules.system.dto.UserUpdateDTO;
 import com.smartordering.modules.system.vo.LoginVO;
 import com.smartordering.modules.system.vo.UserInfoVO;
 import com.smartordering.modules.system.vo.UserVO;
-
-import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * User service interface.
@@ -24,7 +23,7 @@ public interface SysUserService {
 
     void register(RegisterDTO dto);
 
-    LoginVO login(LoginDTO dto);
+    LoginVO login(LoginDTO dto, HttpServletRequest request);
 
     UserInfoVO getCurrentUserInfo();
 
@@ -52,6 +51,4 @@ public interface SysUserService {
     /** Admin: delete user (logic delete; admin / self protected) */
     void deleteUser(Long userId);
 
-    /** Admin: replace a user's module grants (core/ops/sys/kitchen) */
-    void updateUserModules(Long userId, List<String> modules);
 }

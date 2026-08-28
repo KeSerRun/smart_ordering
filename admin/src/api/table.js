@@ -23,3 +23,6 @@ export const deleteTableQr = (id) => request.delete(`/admin/table/${id}/qrcode`)
 // 打包下载全部二维码
 export const genDownloadAllQrTask = () => request.post('/admin/table/qrcode/download-all/task')
 export const downloadQrTaskFile = (taskId) => request.get(`/admin/table/qrcode/task/${taskId}/download`, { responseType: 'blob' })
+
+// 桌台点餐（开台下单，直接传菜品明细）
+export const createTableOrder = (d) => request.post('/admin/order', d)

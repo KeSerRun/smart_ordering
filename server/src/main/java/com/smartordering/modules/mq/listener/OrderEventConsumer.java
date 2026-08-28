@@ -67,6 +67,14 @@ public class OrderEventConsumer {
         }
 
         try {
+            // 自动接单：开关开启时，新订单的菜品任务直接置为制作中（无需后厨手动点接单）
+            if (kitchenService.getAutoAcceptEnabled()) {
+                int accepted = kitchenService.autoAcceptByOrder(event.getOrderId());
+                if (accepted > 0) {
+                    log.info("Kitchen auto-accept enabled, orderNo={}, accepted={}",
+                            event.getOrderNo(), accepted);
+                }
+            }
             List<KitchenTaskVO> tasks = kitchenService.getTaskList();
             wsService.broadcast(WsEventType.NEW_ORDER, KITCHEN_TOPIC, tasks);
             reliableMessageService.finishConsume(consumeId, true, null);

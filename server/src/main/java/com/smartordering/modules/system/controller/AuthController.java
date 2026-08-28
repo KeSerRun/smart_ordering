@@ -34,10 +34,11 @@ public class AuthController {
     }
 
     @Operation(summary = "Login")
-    @PostMapping("/login")
-    public ApiResponse<LoginVO> login(@Valid @RequestBody LoginDTO dto) {
-        return ApiResponse.ok(userService.login(dto));
-    }
+        @PostMapping("/login")
+        public ApiResponse<LoginVO> login(@Valid @RequestBody LoginDTO dto,
+                                          jakarta.servlet.http.HttpServletRequest request) {
+            return ApiResponse.ok(userService.login(dto, request));
+        }
 
     @Operation(summary = "Logout")
     @PostMapping("/logout")

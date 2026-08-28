@@ -15,6 +15,7 @@ public class PaymentVO {
 
     private Long id;
     private Long orderId;
+    private String orderNo;
     private String paymentNo;
     private Integer paymentMethod;
     private BigDecimal amount;

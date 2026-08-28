@@ -3,12 +3,14 @@ package com.smartordering.modules.coupon.controller;
 import com.smartordering.common.result.PageResult;
 import com.smartordering.common.result.Result;
 import com.smartordering.modules.coupon.dto.CouponGrantDTO;
+import com.smartordering.modules.coupon.dto.CouponGrantTaskDetailQueryDTO;
 import com.smartordering.modules.coupon.dto.CouponGrantTaskQueryDTO;
 import com.smartordering.modules.coupon.dto.CouponTemplateCreateDTO;
 import com.smartordering.modules.coupon.dto.CouponTemplateQueryDTO;
 import com.smartordering.modules.coupon.dto.CouponTemplateUpdateDTO;
 import com.smartordering.modules.coupon.dto.UserCouponQueryDTO;
 import com.smartordering.modules.coupon.service.CouponService;
+import com.smartordering.modules.coupon.vo.CouponGrantTaskDetailVO;
 import com.smartordering.modules.coupon.vo.CouponGrantTaskVO;
 import com.smartordering.modules.coupon.vo.CouponTemplateVO;
 import com.smartordering.modules.coupon.vo.UserCouponVO;
@@ -17,8 +19,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * Admin coupon controller.
@@ -66,25 +66,29 @@ public class AdminCouponController {
         return Result.success(couponService.pageUserCoupons(dto));
     }
 
-    // The manage/coupon page calls these. Backend wiring is in progress.
-    @Operation(summary = "Grant coupons")
+    // ===== 发券任务 =====
+
+    @Operation(summary = "Submit coupon grant task (async, supports by-level grants)")
     @PostMapping("/grant")
-    public Result<CouponGrantTaskVO> grantCoupons(@RequestBody CouponGrantDTO dto) {
-        CouponGrantTaskVO vo = new CouponGrantTaskVO();
-        vo.setTaskStatus(2);
-        vo.setSuccessCount(0);
-        return Result.success(vo);
+    public Result<CouponGrantTaskVO> grantCoupons(@Valid @RequestBody CouponGrantDTO dto) {
+        return Result.success(couponService.submitGrantTask(dto));
     }
 
-    @Operation(summary = "Paged grant tasks")
+    @Operation(summary = "Get coupon grant task status")
+    @GetMapping("/task/{id}")
+    public Result<CouponGrantTaskVO> getGrantTask(@PathVariable Long id) {
+        return Result.success(couponService.getGrantTask(id));
+    }
+
+    @Operation(summary = "Paged coupon grant tasks")
     @GetMapping("/task/page")
     public Result<PageResult<CouponGrantTaskVO>> pageGrantTasks(CouponGrantTaskQueryDTO dto) {
-        return Result.success(PageResult.of(List.of(), 1L, 10L, 0L));
+        return Result.success(couponService.pageGrantTasks(dto));
     }
 
-    @Operation(summary = "Paged grant task details")
+    @Operation(summary = "Paged coupon grant task details")
     @GetMapping("/task/detail/page")
-    public Result<PageResult<String>> pageGrantTaskDetails() {
-        return Result.success(PageResult.of(List.of(), 1L, 10L, 0L));
+    public Result<PageResult<CouponGrantTaskDetailVO>> pageGrantTaskDetails(CouponGrantTaskDetailQueryDTO dto) {
+        return Result.success(couponService.pageGrantTaskDetails(dto));
     }
 }

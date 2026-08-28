@@ -1,6 +1,6 @@
 <template>
   <n-space vertical>
-    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" />
+    <n-data-table :columns="columns" :data="rows" :loading="loading" :scroll-x="1000" :pagination="pagination" />
   </n-space>
   <n-modal v-model:show="showModal" preset="card" title="回复反馈" style="width:460px">
     <n-form label-placement="top">
@@ -33,13 +33,12 @@ const form = ref({ id: null, content: '', replyContent: '' })
 const pagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 
 const columns = [
-  { title: 'ID', key: 'id', width: 70 },
-  { title: '内容', key: 'content' },
-  { title: '联系方式', key: 'contactPhone' },
+  { title: '内容', key: 'content', width: 260, ellipsis: { tooltip: true }, render: (r) => r.content || '-' },
+  { title: '联系方式', key: 'contactPhone', width: 130, render: (r) => r.contactPhone || '-' },
   { title: '状态', key: 'status', render: (r) => (r.status === 1 ? '未处理' : '已回复'), width: 80 },
-  { title: '回复内容', key: 'replyContent' },
+  { title: '回复内容', key: 'replyContent', width: 240, ellipsis: { tooltip: true }, render: (r) => r.replyContent || '-' },
   { title: '时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'op', render: (r) => h('a', { href: 'javascript:;', onClick: () => { form.value = { ...r }; showModal.value = true } }, '回复') }
+  { title: '操作', key: 'op', width: 60, render: (r) => h('a', { href: 'javascript:;', onClick: () => { form.value = { ...r }; showModal.value = true } }, '回复') }
 ]
 
 const load = async () => {

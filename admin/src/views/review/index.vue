@@ -1,5 +1,5 @@
 <template>
-  <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" />
+  <n-data-table :columns="columns" :data="rows" :loading="loading" :scroll-x="900" :pagination="pagination" />
 </template>
 
 <script setup>
@@ -13,10 +13,10 @@ const pagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 const star = (n) => '★'.repeat(n || 0) + '☆'.repeat(Math.max(5 - (n || 0), 0))
 
 const columns = [
-  { title: '订单号', key: 'orderNo' },
-  { title: '桌号', key: 'tableCode' },
-  { title: '评分', key: 'overallRating', render: (r) => star(r.overallRating) },
-  { title: '内容', key: 'content' },
+  { title: '订单号', key: 'orderNo', width: 180, ellipsis: { tooltip: true } },
+  { title: '桌号', key: 'tableCode', width: 80 },
+  { title: '评分', key: 'overallRating', width: 80, render: (r) => star(r.overallRating) },
+  { title: '内容', key: 'content', width: 280, ellipsis: { tooltip: true }, render: (r) => r.content || '-' },
   { title: '时间', key: 'createTime', width: 160 }
 ]
 

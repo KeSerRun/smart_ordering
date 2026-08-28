@@ -6,11 +6,12 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 角色创建 DTO
  *
-
+ * @author smartordering
  */
 @Data
 public class RoleCreateDTO implements Serializable {
@@ -41,4 +42,9 @@ public class RoleCreateDTO implements Serializable {
      * 备注
      */
     private String remark;
+
+    /**
+     * 模块权限编码列表：core/ops/sys/kitchen
+     */
+    private List<String> modules;
 }

@@ -5,7 +5,7 @@
       <n-button type="primary" @click="openModal()">新增轮播</n-button>
       <n-button @click="load">查询</n-button>
     </n-space>
-    <n-data-table :columns="columns" :data="rows" :loading="loading" :pagination="pagination" @update:page="onPageChange" />
+    <n-data-table :columns="columns" :data="rows" :loading="loading" :scroll-x="1100" :pagination="pagination" @update:page="onPageChange" />
 
     <!-- 新增 / 编辑弹窗 -->
     <n-modal v-model:show="showModal" preset="card" :title="form.id ? '编辑轮播' : '新增轮播'" style="width:520px">
@@ -72,8 +72,8 @@ const columns = [
     title: '图片', key: 'image', width: 70,
     render: (r) => h(NImage, { src: r.imageUrl, width: 48, height: 48, objectFit: 'cover', style: 'border-radius:4px' })
   },
-  { title: '标题', key: 'title' },
-  { title: '副标题', key: 'subtitle' },
+  { title: '标题', key: 'title', width: 200, ellipsis: { tooltip: true } },
+  { title: '副标题', key: 'subtitle', width: 250, ellipsis: { tooltip: true }, render: (r) => r.subtitle || '-' },
   { title: '场景', key: 'scene', width: 80 },
   { title: '排序', key: 'sort', width: 60 },
   {

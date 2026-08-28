@@ -9,7 +9,7 @@
           <n-button @click="handleDownloadAllQr">打包下载全部二维码</n-button>
           <n-button @click="loadTables">刷新</n-button>
         </n-space>
-        <n-data-table :columns="tableColumns" :data="tables" :loading="tableLoading" />
+        <n-data-table :columns="tableColumns" :data="tables" :loading="tableLoading" :scroll-x="1300" />
       </n-tab-pane>
 
       <!-- 桌区 -->
@@ -17,7 +17,7 @@
         <n-space style="margin-bottom: 12px">
           <n-button type="primary" @click="openAreaModal()">新增桌区</n-button>
         </n-space>
-        <n-data-table :columns="areaColumns" :data="areas" :loading="areaLoading" />
+        <n-data-table :columns="areaColumns" :data="areas" :loading="areaLoading" :scroll-x="700" />
       </n-tab-pane>
     </n-tabs>
 
@@ -56,6 +56,53 @@
         </n-space>
       </template>
     </n-modal>
+
+    <!-- 点餐弹窗 -->
+    <n-modal v-model:show="orderModal" preset="card" :title="`点餐 - ${orderTable?.name || ''} (${orderTable?.code || ''})`" style="width: 880px">
+      <n-space vertical>
+        <n-space align="center">
+          <n-input v-model:value="dishKeyword" clearable placeholder="搜索菜品名称" style="width: 220px" @keyup.enter="loadDishes" />
+          <n-text depth="3">右侧点击菜品加入清单，仅显示在售菜品</n-text>
+        </n-space>
+        <n-grid :cols="2" :x-gap="16">
+          <n-gi>
+            <div class="dish-panel">
+              <div v-for="d in filteredDishes" :key="d.id" class="dish-item" @click="addToCart(d)">
+                <span class="dish-name" :title="d.name">{{ d.name }}</span>
+                <span class="dish-price">￥{{ d.price }}</span>
+                <n-button size="tiny" type="primary" dashed>+</n-button>
+              </div>
+              <n-empty v-if="!filteredDishes.length" description="暂无可售菜品" style="margin-top: 40px" />
+            </div>
+          </n-gi>
+          <n-gi>
+            <div class="cart-panel">
+              <div class="cart-title">已选 {{ cartItems.length }} 种菜品</div>
+              <div v-for="it in cartItems" :key="it.dishId" class="cart-item">
+                <span class="cart-name" :title="it.name">{{ it.name }}</span>
+                <span class="cart-qty">
+                  <n-button size="tiny" text @click="changeQty(it, -1)">−</n-button>
+                  <span class="qty-num">{{ it.quantity }}</span>
+                  <n-button size="tiny" text @click="changeQty(it, 1)">+</n-button>
+                </span>
+                <span class="cart-amount">￥{{ (it.price * it.quantity).toFixed(2) }}</span>
+              </div>
+              <n-empty v-if="!cartItems.length" description="还未选择菜品" size="small" style="margin-top: 30px" />
+              <div class="cart-total">合计：￥{{ cartTotal.toFixed(2) }}</div>
+            </div>
+          </n-gi>
+        </n-grid>
+        <n-form-item label="备注">
+          <n-input v-model:value="orderRemark" placeholder="选填，如口味要求" />
+        </n-form-item>
+      </n-space>
+      <template #footer>
+        <n-space justify="end">
+          <n-button @click="orderModal = false">取消</n-button>
+          <n-button type="primary" :loading="orderSaving" @click="submitOrder">确认下单</n-button>
+        </n-space>
+      </template>
+    </n-modal>
   </n-space>
 </template>
 
@@ -66,6 +113,7 @@ import {
   NInput, NInputNumber, NSelect, NSwitch, NTag, NImage, useMessage
 } from 'naive-ui'
 import * as tableApi from '@/api/table'
+import { listDishes } from '@/api/dish'
 
 const message = useMessage()
 const tab = ref('tables')
@@ -87,10 +135,10 @@ const areaOptions = computed(() => areas.value.map((a) => ({ label: a.name, valu
 const tableStatusMap = { 0: ['空闲', 'success'], 1: ['占用', 'error'], 3: ['待清理', 'warning'] }
 
 const tableColumns = [
-  { title: '名称', key: 'name' },
-  { title: '代码', key: 'code' },
+  { title: '名称', key: 'name', width: 140, ellipsis: { tooltip: true } },
+  { title: '代码', key: 'code', width: 100 },
   { title: '容量', key: 'capacity', width: 80 },
-  { title: '桌区', key: 'areaName' },
+  { title: '桌区', key: 'areaName', width: 100, render: (r) => r.areaName || '-' },
   {
     title: '状态', key: 'status', width: 90,
     render: (r) => h(NTag, { type: (tableStatusMap[r.status] || ['-', 'default'])[1], size: 'small' }, () => (tableStatusMap[r.status] || ['-'])[0])
@@ -109,9 +157,10 @@ const tableColumns = [
       ])
   },
   {
-    title: '操作', key: 'action', width: 140,
+    title: '操作', key: 'action', width: 180,
     render: (r) =>
       h(NSpace, { size: 4, justify: 'center' }, () => [
+        h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => openOrderModal(r) }, { default: () => '点餐' }),
         h(NButton, { size: 'small', text: true, onClick: () => openTableModal(r) }, { default: () => '编辑' }),
         h(NButton, { size: 'small', text: true, type: 'error', onClick: () => delTable(r.id) }, { default: () => '删除' })
       ])
@@ -119,7 +168,7 @@ const tableColumns = [
 ]
 
 const areaColumns = [
-  { title: '名称', key: 'name' },
+  { title: '名称', key: 'name', width: 140, ellipsis: { tooltip: true } },
   { title: '排序', key: 'sort', width: 80 },
   {
     title: '状态', key: 'status', width: 90,
@@ -264,8 +313,157 @@ async function handleDownloadAllQr() {
   poll()
 }
 
+// ==================== 桌台点餐 ====================
+
+const orderModal = ref(false)
+const orderTable = ref(null)
+const orderSaving = ref(false)
+const orderRemark = ref('')
+const dishKeyword = ref('')
+const dishes = ref([])
+const cartItems = ref([]) // { dishId, name, price, quantity }
+
+const cartTotal = computed(() => cartItems.value.reduce((s, i) => s + i.price * i.quantity, 0))
+
+const filteredDishes = computed(() => {
+  const kw = dishKeyword.value.trim()
+  if (!kw) return dishes.value
+  return dishes.value.filter((d) => (d.name || '').includes(kw))
+})
+
+async function loadDishes() {
+  if (!dishes.value.length && !orderModal.value) return
+  try {
+    const d = await listDishes({ pageNum: 1, pageSize: 200, status: 1 })
+    dishes.value = d.list || []
+  } catch {
+    dishes.value = []
+  }
+}
+
+function openOrderModal(row) {
+  if (row.status !== 0) {
+    message.warning(row.status === 1 ? '桌台已占用，如需加菜请到订单页处理' : '桌台待清理，请先操作')
+    return
+  }
+  orderTable.value = row
+  cartItems.value = []
+  orderRemark.value = ''
+  orderModal.value = true
+  loadDishes()
+}
+
+function addToCart(dish) {
+  const it = cartItems.value.find((i) => i.dishId === dish.id)
+  if (it) it.quantity += 1
+  else cartItems.value.push({ dishId: dish.id, name: dish.name, price: Number(dish.price || 0), quantity: 1 })
+}
+
+function changeQty(it, delta) {
+  it.quantity += delta
+  if (it.quantity <= 0) cartItems.value = cartItems.value.filter((x) => x.dishId !== it.dishId)
+}
+
+async function submitOrder() {
+  if (!cartItems.value.length) {
+    message.warning('请先选择菜品')
+    return
+  }
+  orderSaving.value = true
+  try {
+    const order = await tableApi.createTableOrder({
+      tableId: orderTable.value.id,
+      items: cartItems.value.map((i) => ({ dishId: i.dishId, quantity: i.quantity })),
+      remark: orderRemark.value || undefined
+    })
+    message.success(`下单成功：${order?.orderNo || ''}，已推送后厨`)
+    orderModal.value = false
+    loadTables()
+  } finally {
+    orderSaving.value = false
+  }
+}
+
 onMounted(() => {
   loadTables()
   loadAreas()
 })
 </script>
+
+<style scoped>
+.dish-panel,
+.cart-panel {
+  border: 1px solid var(--n-border-color, #e5e7eb);
+  border-radius: 6px;
+  min-height: 320px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 8px;
+}
+.dish-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.dish-item:hover {
+  background: rgba(24, 160, 88, 0.08);
+}
+.dish-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.dish-price {
+  color: #e65c4a;
+  font-weight: 600;
+  font-size: 13px;
+}
+.cart-title {
+  font-size: 13px;
+  color: var(--n-text-color-3, #888);
+  padding: 4px 8px;
+}
+.cart-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+.cart-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.cart-qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.qty-num {
+  min-width: 20px;
+  text-align: center;
+  font-size: 13px;
+}
+.cart-amount {
+  width: 80px;
+  text-align: right;
+  font-size: 13px;
+}
+.cart-total {
+  border-top: 1px dashed var(--n-border-color, #e5e7eb);
+  margin-top: 6px;
+  padding: 10px 8px 4px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 14px;
+  color: #e65c4a;
+}
+</style>

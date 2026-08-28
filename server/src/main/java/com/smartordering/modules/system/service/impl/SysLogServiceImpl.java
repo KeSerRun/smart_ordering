@@ -17,6 +17,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,5 +72,27 @@ public class SysLogServiceImpl implements SysLogService {
             return vo;
         }).collect(Collectors.toList());
         return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
+    }
+
+    @Override
+    public void recordLogin(String username, String ip, String browser, String os, int status, String message) {
+        SysLoginLog log = new SysLoginLog();
+        log.setUsername(username);
+        log.setIp(ip);
+        log.setLocation(null);
+        log.setBrowser(browser);
+        log.setOs(os);
+        log.setStatus(status);
+        log.setMessage(StringUtils.hasText(message) && message.length() > 500 ? message.substring(0, 500) : message);
+        log.setLoginTime(LocalDateTime.now());
+        loginLogMapper.insert(log);
+    }
+
+    @Override
+    public void recordOperation(SysOperationLog record) {
+        if (record == null) {
+            return;
+        }
+        operationLogMapper.insert(record);
     }
 }

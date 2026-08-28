@@ -36,17 +36,27 @@ public class RabbitMqConfig {
     /** 桌台二维码批量生成路由键 */
     private final String tableQrCodeRoutingKey;
 
+    /** 优惠券发放队列 */
+    private final String couponGrantQueue;
+
+    /** 优惠券发放路由键 */
+    private final String couponGrantRoutingKey;
+
     public RabbitMqConfig(
             @Value("${smart.mq.topic-exchange:smart.event.topic}") String topicExchange,
             @Value("${smart.mq.kitchen-queue:kitchen.order.queue}") String kitchenQueue,
             @Value("${smart.mq.order-routing-key:order.created}") String orderRoutingKey,
             @Value("${smart.mq.table-qrcode-queue:table.qrcode.queue}") String tableQrCodeQueue,
-            @Value("${smart.mq.table-qrcode-routing-key:table.qrcode.generate}") String tableQrCodeRoutingKey) {
+            @Value("${smart.mq.table-qrcode-routing-key:table.qrcode.generate}") String tableQrCodeRoutingKey,
+            @Value("${smart.mq.coupon-grant-queue:coupon.grant.queue}") String couponGrantQueue,
+            @Value("${smart.mq.coupon-grant-routing-key:coupon.grant.create}") String couponGrantRoutingKey) {
         this.topicExchange = topicExchange;
         this.kitchenQueue = kitchenQueue;
         this.orderRoutingKey = orderRoutingKey;
         this.tableQrCodeQueue = tableQrCodeQueue;
         this.tableQrCodeRoutingKey = tableQrCodeRoutingKey;
+        this.couponGrantQueue = couponGrantQueue;
+        this.couponGrantRoutingKey = couponGrantRoutingKey;
     }
 
     public String getTopicExchange() {
@@ -67,6 +77,14 @@ public class RabbitMqConfig {
 
     public String getTableQrCodeRoutingKey() {
         return tableQrCodeRoutingKey;
+    }
+
+    public String getCouponGrantQueue() {
+        return couponGrantQueue;
+    }
+
+    public String getCouponGrantRoutingKey() {
+        return couponGrantRoutingKey;
     }
 
     /** 业务事件 topic 交换机（durable） */
@@ -101,5 +119,19 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(tableQrCodeQueue)
                 .to(orderTopicExchange)
                 .with(tableQrCodeRoutingKey);
+    }
+
+    /** 优惠券发放队列（durable） */
+    @Bean
+    public Queue couponGrantQueue() {
+        return new Queue(couponGrantQueue, true);
+    }
+
+    /** 将 coupon.grant.create 路由到优惠券发放队列 */
+    @Bean
+    public Binding couponGrantBinding(TopicExchange orderTopicExchange, Queue couponGrantQueue) {
+        return BindingBuilder.bind(couponGrantQueue)
+                .to(orderTopicExchange)
+                .with(couponGrantRoutingKey);
     }
 }

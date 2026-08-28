@@ -1,14 +1,14 @@
 <template>
   <n-tabs type="line" v-model:value="tab">
     <n-tab-pane name="members" tab="会员列表">
-      <n-data-table :columns="mColumns" :data="members" :loading="loading" :pagination="mPagination" />
+      <n-data-table :columns="mColumns" :data="members" :loading="loading" :scroll-x="1000" :pagination="mPagination" />
     </n-tab-pane>
     <n-tab-pane name="levels" tab="等级管理">
       <n-space style="margin-bottom:12px"><n-button type="primary" @click="openAddLevel">新增等级</n-button></n-space>
-      <n-data-table :columns="lColumns" :data="levels" :loading="loading" />
+      <n-data-table :columns="lColumns" :data="levels" :loading="loading" :scroll-x="900" />
     </n-tab-pane>
     <n-tab-pane name="points" tab="积分/成长记录">
-      <n-data-table :columns="pColumns" :data="points" :loading="loading" :pagination="pPagination" />
+      <n-data-table :columns="pColumns" :data="points" :loading="loading" :scroll-x="650" :pagination="pPagination" />
     </n-tab-pane>
   </n-tabs>
 
@@ -66,23 +66,23 @@ const mPagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 const pPagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 
 const mColumns = [
-  { title: '会员号', key: 'memberNo' },
-  { title: '昵称', key: 'nickname' },
-  { title: '手机号', key: 'phone' },
-  { title: '等级', key: 'levelName' },
-  { title: '成长值', key: 'growthValue' },
-  { title: '积分', key: 'pointsBalance' },
-  { title: '状态', key: 'status', render: (r) => (r.status === 1 ? '正常' : '禁用') },
-  { title: '操作', key: 'op', render: (r) => h('a', { href: 'javascript:;', onClick: () => openAdjust(r) }, '调整积分') }
+  { title: '会员号', key: 'memberNo', width: 130, ellipsis: { tooltip: true } },
+  { title: '昵称', key: 'nickname', width: 140, ellipsis: { tooltip: true }, render: (r) => r.nickname || '-' },
+  { title: '手机号', key: 'phone', width: 130, render: (r) => r.phone || '-' },
+  { title: '等级', key: 'levelName', width: 110, render: (r) => r.levelName || '-' },
+  { title: '成长值', key: 'growthValue', width: 90 },
+  { title: '积分', key: 'pointsBalance', width: 90 },
+  { title: '状态', key: 'status', width: 70, render: (r) => (r.status === 1 ? '正常' : '禁用') },
+  { title: '操作', key: 'op', width: 90, render: (r) => h('a', { href: 'javascript:;', onClick: () => openAdjust(r) }, '调整积分') }
 ]
 
 const lColumns = [
-  { title: '编码', key: 'levelCode' },
-  { title: '名称', key: 'levelName' },
-  { title: '成长值门槛', key: 'growthThreshold' },
-  { title: '积分倍率', key: 'pointsRate' },
-  { title: '折扣率', key: 'discountRate' },
-  { title: '状态', key: 'status', render: (r) => (r.status === 1 ? '启用' : '停用') },
+  { title: '编码', key: 'levelCode', width: 110 },
+  { title: '名称', key: 'levelName', width: 140, ellipsis: { tooltip: true } },
+  { title: '成长值门槛', key: 'growthThreshold', width: 110 },
+  { title: '积分倍率', key: 'pointsRate', width: 100 },
+  { title: '折扣率', key: 'discountRate', width: 100 },
+  { title: '状态', key: 'status', width: 70, render: (r) => (r.status === 1 ? '启用' : '停用') },
   { title: '操作', key: 'op', render: (r) => h('span', {},
     [
       h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openEditLevel(r) }, '编辑'),
@@ -93,10 +93,9 @@ const lColumns = [
 ]
 
 const pColumns = [
-  { title: '用户ID', key: 'userId' },
-  { title: '变动积分', key: 'points' },
-  { title: '类型', key: 'changeType', render: (r) => (r.changeType === 1 ? '收入' : '支出') },
-  { title: '备注', key: 'remark' },
+  { title: '变动积分', key: 'points', width: 100 },
+  { title: '类型', key: 'changeType', width: 70, render: (r) => (r.changeType === 1 ? '收入' : '支出') },
+  { title: '备注', key: 'remark', width: 220, ellipsis: { tooltip: true }, render: (r) => r.remark || '-' },
   { title: '时间', key: 'createTime', width: 160 }
 ]
 

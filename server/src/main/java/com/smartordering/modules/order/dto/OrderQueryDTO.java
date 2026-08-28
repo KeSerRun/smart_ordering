@@ -33,14 +33,19 @@ public class OrderQueryDTO implements Serializable {
     private Integer status;
 
     /**
-     * 桌台ID
-     */
-    private Long tableId;
+         * 桌台ID
+         */
+        private Long tableId;
 
-    /**
-     * 订单编号（模糊搜索）
-     */
-    private String orderNo;
+        /**
+         * 桌台号（桌台代码，模糊搜索，收银按桌台号查单用）
+         */
+        private String tableCode;
+
+        /**
+         * 订单编号（模糊搜索）
+         */
+        private String orderNo;
 
     /**
      * 区域名称
