@@ -44,3 +44,12 @@ sa-token:
   token-style: uuid # token 风格
   is-log: false # 是否输出日志
 
+# 业务 MQ 可靠消息配置（交换机/队列/路由键会在 RabbitMQ 上自动声明）
+smart:
+  mq:
+    topic-exchange: smart.event.topic         # 业务事件 topic 交换机
+    kitchen-queue: kitchen.order.queue        # 后厨订单队列
+    order-routing-key: order.created          # 新订单路由键
+    resend-interval-ms: 15000                 # 可靠消息补偿重发扫描间隔
+    max-retry-count: 5                        # 投递最大重试次数，超过标记失败
+

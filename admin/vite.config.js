@@ -15,7 +15,8 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.VITE_SERVICE_TARGET || 'http://localhost:8080',
-        changeOrigin: true
+        changeOrigin: true,
+        ws: true // WebSocket( SockJS) 升级也走代理，后厨大屏 STOMP 需要
       }
     }
   }

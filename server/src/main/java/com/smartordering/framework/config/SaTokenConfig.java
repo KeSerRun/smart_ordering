@@ -25,7 +25,7 @@ public class SaTokenConfig implements WebMvcConfigurer {
                                         "/health/**", "/swagger-ui/**", "/v3/api-docs/**",
                                         "/doc.html", "/upload/**", "/webjars/**",
                                         "/app/dish/**", "/app/table/**", "/app/banner/**",
-                                        "/route/getConstantRoutes")
+                                        "/route/getConstantRoutes", "/ws/**")
                                 .check(r -> StpUtil.checkLogin());
         })).addPathPatterns("/**");
     }

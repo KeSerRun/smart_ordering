@@ -42,16 +42,18 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue'
 import {
   NSpace, NCard, NButton, NTag, NEmpty, NTabs, NTabPane, NSwitch, useMessage
 } from 'naive-ui'
 import * as kitchenApi from '@/api/kitchen'
+import { createStompClient } from '@/utils/ws'
 
 const message = useMessage()
 const tasks = ref([])
 const autoAccept = ref(false)
 const tab = ref('pending')
+let stompClient = null
 
 const STATUS = { 0: 'pending', 1: 'accepted', 2: 'done' }
 
@@ -61,6 +63,13 @@ const accepted = computed(() => tasks.value.filter((t) => t.status === 1))
 async function loadTasks() {
   tasks.value = (await kitchenApi.listKitchenTasks()) || []
   autoAccept.value = await kitchenApi.getAutoAccept()
+}
+
+// WebSocket 推送：服务端把全量后厨任务列表广播到 /topic/kitchen，直接整体替换
+function onWsMessage(body) {
+  if (body && Array.isArray(body.data)) {
+    tasks.value = body.data
+  }
 }
 
 async function doAccept(id) {
@@ -81,7 +90,18 @@ async function toggleAutoAccept(v) {
   message.success('已更新')
 }
 
-onMounted(loadTasks)
+onMounted(() => {
+  loadTasks()
+  stompClient = createStompClient({ onMessage: onWsMessage })
+  stompClient.activate()
+})
+
+onBeforeUnmount(() => {
+  if (stompClient) {
+    stompClient.deactivate()
+    stompClient = null
+  }
+})
 </script>
 
 <style scoped>

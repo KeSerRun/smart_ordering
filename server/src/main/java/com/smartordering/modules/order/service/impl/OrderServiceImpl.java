@@ -7,7 +7,9 @@ import com.smartordering.common.result.PageResult;
 import com.smartordering.modules.cart.service.CartService;
 import com.smartordering.modules.cart.vo.CartItemVO;
 import com.smartordering.modules.cart.vo.CartVO;
+import com.smartordering.modules.mq.service.ReliableMessageService;
 import com.smartordering.modules.order.dto.OrderCreateDTO;
+import com.smartordering.modules.order.dto.OrderCreatedEvent;
 import com.smartordering.modules.order.dto.OrderQueryDTO;
 import com.smartordering.modules.order.entity.Order;
 import com.smartordering.modules.order.entity.OrderItem;
@@ -49,6 +51,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemMapper orderItemMapper;
     private final CartService cartService;
     private final DiningTableMapper diningTableMapper;
+    private final ReliableMessageService reliableMessageService;
 
     @Override
     @Transactional
@@ -103,11 +106,52 @@ public class OrderServiceImpl implements OrderService {
             orderItemMapper.insert(oi);
         }
 
-        // 6. Clear cart
+        // 6. Write reliable message (transactional outbox): publish after commit -> kitchen push
+        reliableMessageService.send(
+                "ORDER:" + order.getOrderNo(),
+                "order.created",
+                "NEW_ORDER",
+                "ORDER",
+                String.valueOf(order.getId()),
+                buildOrderCreatedEvent(order, userId, cart));
+
+        // 7. Clear cart
         cartService.clearCart(userId, dto.getTableId());
 
         log.info("Order created: orderNo={}, tableId={}, amount={}", order.getOrderNo(), dto.getTableId(), originalAmount);
         return getOrderDetail(order.getId());
+    }
+
+    /**
+     * Build the order-created event payload (written into the reliable-message outbox,
+     * published to RabbitMQ, then broadcast to the kitchen screen).
+     */
+    private OrderCreatedEvent buildOrderCreatedEvent(Order order, Long userId, CartVO cart) {
+        List<OrderCreatedEvent.Item> items = cart.getItems().stream()
+                .map(i -> OrderCreatedEvent.Item.builder()
+                        .dishId(i.getDishId())
+                        .dishName(i.getDishName())
+                        .quantity(i.getQuantity())
+                        .amount(i.getAmount())
+                        .remark(i.getRemark())
+                        .build())
+                .collect(Collectors.toList());
+        return OrderCreatedEvent.builder()
+                .messageKey("ORDER:" + order.getOrderNo())
+                .orderId(order.getId())
+                .orderNo(order.getOrderNo())
+                .tableId(order.getTableId())
+                .tableCode(order.getTableCode())
+                .orderType(order.getOrderType())
+                .paymentMode(order.getPaymentMode())
+                .status(order.getStatus())
+                .originalAmount(order.getOriginalAmount())
+                .actualAmount(order.getActualAmount())
+                .remark(order.getRemark())
+                .userId(userId)
+                .createdAt(order.getCreateTime() != null ? order.getCreateTime() : LocalDateTime.now())
+                .items(items)
+                .build();
     }
 
     @Override
