@@ -11,7 +11,7 @@ import com.smartordering.modules.table.entity.TableCleanTask;
  */
 public interface TableCleanTaskService {
 
-    /** 派发清理任务：桌台必须为待清理(3)状态，记录清理人 */
+    /** 派发清理任务：占用(1)或待清理(3)桌台可派发，占用桌台强制转待清理 */
     TableCleanTask assignCleanTask(CleanTaskAssignDTO dto);
 
     /** 完成清理：任务置已清理 + 桌台恢复空闲 */

@@ -161,7 +161,7 @@ const tableColumns = [
     render: (r) =>
       h(NSpace, { size: 4, justify: 'center' }, () => [
         h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => openOrderModal(r) }, { default: () => '点餐' }),
-        r.status === 3
+        r.status === 1 || r.status === 3
           ? h(NButton, { size: 'small', text: true, type: 'warning', onClick: () => doAssignClean(r) }, { default: () => '派发清理' })
           : null,
         h(NButton, { size: 'small', text: true, onClick: () => openTableModal(r) }, { default: () => '编辑' }),

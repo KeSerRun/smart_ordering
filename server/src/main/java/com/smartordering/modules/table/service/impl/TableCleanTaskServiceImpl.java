@@ -43,8 +43,9 @@ public class TableCleanTaskServiceImpl implements TableCleanTaskService {
         if (table == null) {
             throw new BusinessException("桌台不存在");
         }
-        if (table.getStatus() == null || table.getStatus() != TABLE_STATUS_TO_CLEAN) {
-            throw new BusinessException("只有待清理状态的桌台才能派发");
+        // 占用(1)或待清理(3)均可派发：占用桌台派发后强制转为待清理
+        if (table.getStatus() == null || (table.getStatus() != 1 && table.getStatus() != TABLE_STATUS_TO_CLEAN)) {
+            throw new BusinessException("仅占用或待清理状态的桌台可以派发");
         }
         // 防止同一桌台重复派发未清理任务
         Long pending = cleanTaskMapper.selectCount(new LambdaQueryWrapper<TableCleanTask>()
@@ -52,6 +53,15 @@ public class TableCleanTaskServiceImpl implements TableCleanTaskService {
                 .eq(TableCleanTask::getStatus, 0));
         if (pending != null && pending > 0) {
             throw new BusinessException("该桌台已有未完成的清理任务");
+        }
+
+        // 占用桌台强制转为待清理
+        if (table.getStatus() == 1) {
+            DiningTable update = new DiningTable();
+            update.setId(table.getId());
+            update.setStatus(TABLE_STATUS_TO_CLEAN);
+            diningTableMapper.updateById(update);
+            table.setStatus(TABLE_STATUS_TO_CLEAN);
         }
 
         TableCleanTask task = new TableCleanTask();
