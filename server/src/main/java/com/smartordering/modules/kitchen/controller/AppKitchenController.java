@@ -43,6 +43,13 @@ public class AppKitchenController {
         return ApiResponse.ok();
     }
 
+    @Operation(summary = "Serve task (done -> served)")
+    @PutMapping("/task/{itemId}/serve")
+    public ApiResponse<Void> serveTask(@PathVariable Long itemId) {
+        kitchenService.serveItem(itemId);
+        return ApiResponse.ok();
+    }
+
     @Operation(summary = "Get auto-accept enabled flag")
     @GetMapping("/auto-accept")
     public ApiResponse<Boolean> getAutoAcceptEnabled() {

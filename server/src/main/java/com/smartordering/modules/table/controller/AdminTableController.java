@@ -1,9 +1,13 @@
 package com.smartordering.modules.table.controller;
 
+import com.smartordering.common.result.PageResult;
 import com.smartordering.common.result.Result;
+import com.smartordering.modules.table.dto.CleanTaskAssignDTO;
 import com.smartordering.modules.table.dto.TableCreateDTO;
 import com.smartordering.modules.table.dto.TableUpdateDTO;
+import com.smartordering.modules.table.entity.TableCleanTask;
 import com.smartordering.modules.table.service.DiningTableService;
+import com.smartordering.modules.table.service.TableCleanTaskService;
 import com.smartordering.modules.table.vo.DiningTableVO;
 import com.smartordering.modules.table.vo.QrCodeTaskVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +31,7 @@ import java.util.List;
 public class AdminTableController {
 
     private final DiningTableService diningTableService;
+    private final TableCleanTaskService tableCleanTaskService;
 
     @Operation(summary = "List all tables (board view)")
     @GetMapping("/list")
@@ -54,12 +59,6 @@ public class AdminTableController {
     public Result<Void> delete(@PathVariable Long id) {
         diningTableService.deleteTable(id);
         return Result.success();
-    }
-
-    @Operation(summary = "Table current order (placeholder)")
-    @GetMapping("/{id}/order")
-    public Result<Object> getTableOrder(@PathVariable Long id) {
-        return Result.success(null);
     }
 
     @Operation(summary = "Mark table clean")
@@ -131,5 +130,39 @@ public class AdminTableController {
     @GetMapping("/qrcode/task/{taskId}/download")
     public void downloadQrCodeTaskFile(@PathVariable String taskId, HttpServletResponse response) {
         diningTableService.downloadQrCodeTaskFile(taskId, response);
+    }
+
+    // ===== 桌台清理派发 =====
+
+    @Operation(summary = "Assign clean task")
+    @PostMapping("/clean/assign")
+    public Result<TableCleanTask> assignCleanTask(@Valid @RequestBody CleanTaskAssignDTO dto) {
+        return Result.success(tableCleanTaskService.assignCleanTask(dto));
+    }
+
+    @Operation(summary = "Complete clean task by task id")
+    @PutMapping("/clean/task/{taskId}/complete")
+    public Result<Void> completeCleanTask(@PathVariable Long taskId) {
+        tableCleanTaskService.completeCleanTask(taskId);
+        return Result.success();
+    }
+
+    @Operation(summary = "Complete clean by table (no task ok)")
+    @PutMapping("/clean/table/{tableId}/complete")
+    public Result<Void> completeCleanByTable(@PathVariable Long tableId) {
+        tableCleanTaskService.completeCleanByTable(tableId);
+        return Result.success();
+    }
+
+    @Operation(summary = "Paged clean tasks")
+    @GetMapping("/clean/task/page")
+    public Result<PageResult<TableCleanTask>> pageCleanTasks(
+            @RequestParam(defaultValue = "1") long pageNum,
+            @RequestParam(defaultValue = "10") long pageSize,
+            @RequestParam(required = false) Integer status) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<TableCleanTask> page =
+                tableCleanTaskService.pageCleanTasks(pageNum, pageSize, status);
+        return Result.success(PageResult.of(page.getRecords(),
+                page.getCurrent(), page.getSize(), page.getTotal()));
     }
 }

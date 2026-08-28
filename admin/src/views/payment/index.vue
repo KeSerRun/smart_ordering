@@ -15,8 +15,9 @@
           :scroll-x="900"
           :row-class-name="rowClassName"
           :row-props="rowProps"
-        />
-        <n-empty v-if="!pendingLoading && !pendingOrders.length" description="暂无待支付订单" style="margin-top: 24px" />
+        >
+          <template #empty>暂无待支付订单</template>
+        </n-data-table>
       </n-tab-pane>
 
       <!-- 支付记录 -->

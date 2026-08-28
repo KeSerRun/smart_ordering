@@ -141,25 +141,25 @@ public class DiningTableServiceImpl implements DiningTableService {
     }
 
     @Override
-        public void updateTableStatus(Long id, Integer status) {
-            DiningTable table = diningTableMapper.selectById(id);
-            if (table == null) {
-                throw new BusinessException("Table not found");
-            }
-            int oldStatus = table.getStatus() == null ? -1 : table.getStatus();
-            DiningTable update = new DiningTable();
-            update.setId(id);
-            update.setStatus(status);
-            diningTableMapper.updateById(update);
-
-            // 桌台状态变更推送到桌面看板
-            Map<String, Object> data = Map.of(
-                    "tableId", table.getId(),
-                    "tableCode", table.getCode(),
-                    "oldStatus", oldStatus,
-                    "newStatus", status);
-            wsService.broadcast(WsEventType.TABLE_STATUS, "/topic/table-status", data);
+    public void updateTableStatus(Long id, Integer status) {
+        DiningTable table = diningTableMapper.selectById(id);
+        if (table == null) {
+            throw new BusinessException("Table not found");
         }
+        int oldStatus = table.getStatus() == null ? -1 : table.getStatus();
+        DiningTable update = new DiningTable();
+        update.setId(id);
+        update.setStatus(status);
+        diningTableMapper.updateById(update);
+
+        // 桌台状态变更推送到桌面看板
+        Map<String, Object> data = Map.of(
+                "tableId", table.getId(),
+                "tableCode", table.getCode(),
+                "oldStatus", oldStatus,
+                "newStatus", status);
+        wsService.broadcast(WsEventType.TABLE_STATUS, "/topic/table-status", data);
+    }
 
     @Override
     public void releaseTable(Long id) {

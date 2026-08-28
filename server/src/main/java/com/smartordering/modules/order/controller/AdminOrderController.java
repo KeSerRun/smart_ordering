@@ -12,8 +12,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 /**
  * Admin order management controller.
  *
@@ -44,51 +42,9 @@ public class AdminOrderController {
 
     // The app/table-board frontend relies on these admin order actions. Backend
     // wiring is in progress; for now they answer 200 so the UI does not error.
-    @Operation(summary = "Estimate order")
-    @PostMapping("/estimate")
-    public Result<Map<String, Object>> estimate(@RequestBody Map<String, Object> body) {
-        return Result.success(Map.of("amount", 0));
-    }
-
     @Operation(summary = "Create order (table ordering, dine-in kickoff)")
     @PostMapping
     public Result<OrderVO> createOrder(@Valid @RequestBody AdminOrderCreateDTO dto) {
         return Result.success(orderService.createAdminOrder(dto));
-    }
-
-    @Operation(summary = "Add item")
-    @PostMapping("/{id}/add-item")
-    public Result<Object> addItem(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return Result.success(null);
-    }
-
-    @Operation(summary = "Rush item")
-    @PostMapping("/{id}/rush/{itemId}")
-    public Result<Void> rushItem(@PathVariable Long id, @PathVariable Long itemId) {
-        return Result.success();
-    }
-
-    @Operation(summary = "Discount order")
-    @PutMapping("/{id}/discount")
-    public Result<Object> discount(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        return Result.success(null);
-    }
-
-    @Operation(summary = "Gift item")
-    @PutMapping("/item/{itemId}/gift")
-    public Result<Void> giftItem(@PathVariable Long itemId) {
-        return Result.success();
-    }
-
-    @Operation(summary = "Return item")
-    @PutMapping("/item/{itemId}/return")
-    public Result<Void> returnItem(@PathVariable Long itemId) {
-        return Result.success();
-    }
-
-    @Operation(summary = "Replace item")
-    @PutMapping("/item/{itemId}/replace")
-    public Result<Void> replaceItem(@PathVariable Long itemId) {
-        return Result.success();
     }
 }

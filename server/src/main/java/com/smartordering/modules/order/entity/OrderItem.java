@@ -32,6 +32,8 @@ public class OrderItem extends BaseEntity {
     private String remark;
     /** Status: 0=pending 1=cooking 2=done */
     private Integer status;
+    /** 上菜状态：0未上菜 1已上菜 */
+    private Integer serveStatus;
     /** Payment status: 0=unpaid 2=paid */
     private Integer paymentStatus;
     /** Is gift: 0=no 1=yes */

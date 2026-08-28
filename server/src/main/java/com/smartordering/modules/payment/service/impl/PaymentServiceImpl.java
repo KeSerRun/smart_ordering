@@ -11,6 +11,7 @@ import com.smartordering.modules.payment.entity.PaymentRecord;
 import com.smartordering.modules.payment.mapper.PaymentRecordMapper;
 import com.smartordering.modules.payment.service.PaymentService;
 import com.smartordering.modules.payment.vo.PaymentVO;
+import com.smartordering.modules.table.service.DiningTableService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -40,6 +41,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRecordMapper paymentRecordMapper;
     private final OrderMapper orderMapper;
+    private final DiningTableService diningTableService;
 
     @Override
     @Transactional
@@ -82,7 +84,19 @@ public class PaymentServiceImpl implements PaymentService {
         order.setPaidAmount(actualAmount);
         orderMapper.updateById(order);
 
-        // 5. Build response
+        // 5. 桌台订单结账后置「待清理」：后厨/桌台管理可派发清理任务
+        if (order.getTableId() != null) {
+            try {
+                diningTableService.updateTableStatus(order.getTableId(), 3);
+                log.info("Table set to-clean after payment: tableId={}, orderNo={}",
+                        order.getTableId(), order.getOrderNo());
+            } catch (BusinessException e) {
+                // 桌台已被删除等边缘情况：结账本身成功，仅记录
+                log.warn("Set table to-clean skipped after payment: {}", e.getMessage());
+            }
+        }
+
+        // 6. Build response
         PaymentVO vo = new PaymentVO();
         vo.setId(record.getId());
         vo.setOrderId(order.getId());

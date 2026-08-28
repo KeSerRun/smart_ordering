@@ -4,5 +4,6 @@ import request from './request'
 export const listKitchenTasks = () => request.get('/app/kitchen/tasks')
 export const acceptTask = (itemId) => request.put(`/app/kitchen/task/${itemId}/accept`)
 export const completeTask = (itemId) => request.put(`/app/kitchen/task/${itemId}/complete`)
+export const serveTask = (itemId) => request.put(`/app/kitchen/task/${itemId}/serve`)
 export const getAutoAccept = () => request.get('/app/kitchen/auto-accept')
 export const setAutoAccept = (enabled) => request.put('/app/kitchen/auto-accept', null, { params: { enabled } })

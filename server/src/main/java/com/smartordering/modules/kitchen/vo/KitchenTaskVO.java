@@ -2,15 +2,20 @@ package com.smartordering.modules.kitchen.vo;
 
 import lombok.Data;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * Kitchen task view object
+ * 后厨任务 VO
  *
  * @author smartordering
  */
 @Data
-public class KitchenTaskVO {
+public class KitchenTaskVO implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     private Long id;
     private Long orderId;
@@ -23,8 +28,10 @@ public class KitchenTaskVO {
     private String dishImage;
     private Integer quantity;
     private String remark;
-    /** Status: 0=pending 1=cooking 2=done */
+    /** 状态：0待制作 1制作中 2已完成 */
     private Integer status;
+    /** 上菜状态：0未上菜 1已上菜（status=2 已完成时才有意义） */
+    private Integer serveStatus;
     private LocalDateTime addedAt;
     private Integer preparationTime;
     private Boolean overtime;

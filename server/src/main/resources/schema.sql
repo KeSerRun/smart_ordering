@@ -192,6 +192,7 @@ CREATE TABLE IF NOT EXISTS order_item (
     amount         DECIMAL(10,2) NOT NULL COMMENT '小计金额',
     remark         VARCHAR(500) COMMENT '口味备注',
     status         INT NOT NULL DEFAULT 0 COMMENT '状态：0待制作 1制作中 2已完成',
+    serve_status   INT NOT NULL DEFAULT 0 COMMENT '上菜状态：0未上菜 1已上菜',
     payment_status INT NOT NULL DEFAULT 0 COMMENT '支付状态：0未支付 2已支付',
     is_gift        INT NOT NULL DEFAULT 0 COMMENT '是否赠送：0否 1是',
     added_at       DATETIME COMMENT '加入订单时间',
@@ -476,28 +477,6 @@ CREATE TABLE IF NOT EXISTS member_growth_record (
     KEY idx_member_growth_record_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会员成长值流水表';
 
--- 订单操作日志表（审计日志）
-CREATE TABLE IF NOT EXISTS order_operation_log (
-    id             BIGINT NOT NULL COMMENT '日志ID',
-    order_id       BIGINT NOT NULL COMMENT '订单ID',
-    order_item_id  BIGINT COMMENT '订单项ID',
-    operation_type VARCHAR(50) NOT NULL COMMENT '操作类型',
-    operator_id    BIGINT NOT NULL COMMENT '操作人ID',
-    operator_name  VARCHAR(100) COMMENT '操作人姓名',
-    reason         VARCHAR(500) COMMENT '操作原因',
-    detail         TEXT COMMENT '操作详情',
-    create_by      BIGINT COMMENT '创建人',
-    update_by      BIGINT COMMENT '更新人',
-    create_time    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time    DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted        INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-    PRIMARY KEY (id),
-    KEY idx_order_id (order_id),
-    KEY idx_order_item_id (order_item_id),
-    KEY idx_operator_id (operator_id),
-    KEY idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='订单操作日志表';
-
 
 -- MQ消息表
 CREATE TABLE IF NOT EXISTS mq_message (
@@ -675,3 +654,23 @@ CREATE TABLE IF NOT EXISTS coupon_grant_task (
     KEY idx_grant_task_template (template_id),
     KEY idx_grant_task_status (task_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='发券任务表';
+
+-- 桌台清理派发表（结账后待清理桌台指派给清理人）
+CREATE TABLE IF NOT EXISTS table_clean_task (
+    id            BIGINT NOT NULL COMMENT '任务ID',
+    table_id      BIGINT NOT NULL COMMENT '桌台ID',
+    table_code    VARCHAR(20) COMMENT '桌台代码快照',
+    table_name    VARCHAR(100) COMMENT '桌台名称快照',
+    assignee_id   BIGINT COMMENT '清理人ID（可空：未指定时后厨自行清理）',
+    assignee_name VARCHAR(100) COMMENT '清理人姓名快照',
+    status        INT NOT NULL DEFAULT 0 COMMENT '状态：0待清理 1已清理',
+    remark        VARCHAR(255) COMMENT '备注',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '派发时间',
+    finish_time   DATETIME COMMENT '完成时间',
+    create_by     BIGINT COMMENT '创建人',
+    update_by     BIGINT COMMENT '更新人',
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id),
+    KEY idx_clean_task_table (table_id),
+    KEY idx_clean_task_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='桌台清理派发表';

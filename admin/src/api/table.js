@@ -26,3 +26,9 @@ export const downloadQrTaskFile = (taskId) => request.get(`/admin/table/qrcode/t
 
 // 桌台点餐（开台下单，直接传菜品明细）
 export const createTableOrder = (d) => request.post('/admin/order', d)
+
+// 桌台清理派发
+export const assignCleanTask = (d) => request.post('/admin/table/clean/assign', d)
+export const completeCleanTask = (taskId) => request.put(`/admin/table/clean/task/${taskId}/complete`)
+export const completeCleanByTable = (tableId) => request.put(`/admin/table/clean/table/${tableId}/complete`)
+export const listCleanTasks = (params) => request.get('/admin/table/clean/task/page', { params })

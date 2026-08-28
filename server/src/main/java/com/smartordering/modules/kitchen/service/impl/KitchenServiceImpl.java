@@ -44,7 +44,7 @@ public class KitchenServiceImpl implements KitchenService {
     @Override
     public List<KitchenTaskVO> getTaskList() {
         LambdaQueryWrapper<OrderItem> itemWrapper = new LambdaQueryWrapper<>();
-        itemWrapper.in(OrderItem::getStatus, 0, 1).orderByAsc(OrderItem::getAddedAt);
+        itemWrapper.in(OrderItem::getStatus, 0, 1, 2).orderByAsc(OrderItem::getAddedAt);
         List<OrderItem> items = orderItemMapper.selectList(itemWrapper);
         if (items.isEmpty()) {
             return Collections.emptyList();
@@ -86,6 +86,7 @@ public class KitchenServiceImpl implements KitchenService {
             vo.setQuantity(item.getQuantity());
             vo.setRemark(item.getRemark());
             vo.setStatus(item.getStatus());
+            vo.setServeStatus(item.getServeStatus());
             vo.setAddedAt(item.getAddedAt());
 
             Dish dish = dishMap.get(item.getDishId());
@@ -130,6 +131,24 @@ public class KitchenServiceImpl implements KitchenService {
         item.setStatus(2);
         orderItemMapper.updateById(item);
         log.info("Kitchen complete task, itemId={}", itemId);
+    }
+
+    @Override
+    @Transactional
+    public void serveItem(Long itemId) {
+        OrderItem item = orderItemMapper.selectById(itemId);
+        if (item == null) {
+            throw new BusinessException("Order item not found");
+        }
+        if (item.getStatus() == null || item.getStatus() != 2) {
+            throw new BusinessException("Only finished dishes can be served");
+        }
+        if (item.getServeStatus() != null && item.getServeStatus() == 1) {
+            throw new BusinessException("Dish already served");
+        }
+        item.setServeStatus(1);
+        orderItemMapper.updateById(item);
+        log.info("Kitchen serve item, itemId={}", itemId);
     }
 
     @Override

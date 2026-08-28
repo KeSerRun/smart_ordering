@@ -57,7 +57,7 @@
       </template>
     </n-modal>
 
-    <!-- 点餐弹窗 -->
+        <!-- 点餐弹窗 -->
     <n-modal v-model:show="orderModal" preset="card" :title="`点餐 - ${orderTable?.name || ''} (${orderTable?.code || ''})`" style="width: 880px">
       <n-space vertical>
         <n-space align="center">
@@ -157,10 +157,13 @@ const tableColumns = [
       ])
   },
   {
-    title: '操作', key: 'action', width: 180,
+    title: '操作', key: 'action', width: 230,
     render: (r) =>
       h(NSpace, { size: 4, justify: 'center' }, () => [
         h(NButton, { size: 'small', text: true, type: 'primary', onClick: () => openOrderModal(r) }, { default: () => '点餐' }),
+        r.status === 3
+          ? h(NButton, { size: 'small', text: true, type: 'warning', onClick: () => doAssignClean(r) }, { default: () => '派发清理' })
+          : null,
         h(NButton, { size: 'small', text: true, onClick: () => openTableModal(r) }, { default: () => '编辑' }),
         h(NButton, { size: 'small', text: true, type: 'error', onClick: () => delTable(r.id) }, { default: () => '删除' })
       ])
@@ -381,6 +384,18 @@ async function submitOrder() {
     loadTables()
   } finally {
     orderSaving.value = false
+  }
+}
+
+// ==================== 清理派发（一键派发，无需指定清理人） ====================
+
+async function doAssignClean(table) {
+  try {
+    await tableApi.assignCleanTask({ tableId: table.id })
+    message.success(`已派发清理任务，后厨将清理 ${table.name || table.code}`)
+    loadTables()
+  } catch (e) {
+    message.error(e?.msg || '派发失败')
   }
 }
 
