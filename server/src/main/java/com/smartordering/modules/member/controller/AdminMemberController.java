@@ -3,6 +3,7 @@ package com.smartordering.modules.member.controller;
 import com.smartordering.common.result.PageResult;
 import com.smartordering.common.result.Result;
 import com.smartordering.modules.member.dto.MemberGrowthRecordQueryDTO;
+import com.smartordering.modules.member.dto.MemberLevelAssignDTO;
 import com.smartordering.modules.member.dto.MemberLevelCreateDTO;
 import com.smartordering.modules.member.dto.MemberLevelStatusDTO;
 import com.smartordering.modules.member.dto.MemberLevelUpdateDTO;
@@ -109,6 +110,13 @@ public class AdminMemberController {
     @PostMapping("/{id}/points-adjust")
     public Result<Void> adjustPoints(@PathVariable Long id, @Valid @RequestBody MemberPointsAdjustDTO dto) {
         memberService.adjustPoints(id, dto);
+        return Result.success();
+    }
+
+    @Operation(summary = "Assign member level to a user")
+    @PutMapping("/{id}/level")
+    public Result<Void> assignLevel(@PathVariable Long id, @Valid @RequestBody MemberLevelAssignDTO dto) {
+        memberService.assignLevel(id, dto);
         return Result.success();
     }
 

@@ -3,6 +3,7 @@ package com.smartordering.modules.member.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartordering.common.result.PageResult;
 import com.smartordering.modules.member.dto.MemberGrowthRecordQueryDTO;
+import com.smartordering.modules.member.dto.MemberLevelAssignDTO;
 import com.smartordering.modules.member.dto.MemberLevelCreateDTO;
 import com.smartordering.modules.member.dto.MemberLevelStatusDTO;
 import com.smartordering.modules.member.dto.MemberLevelUpdateDTO;
@@ -55,4 +56,7 @@ public interface MemberService {
     PageResult<MemberGrowthRecordVO> growthRecordPage(MemberGrowthRecordQueryDTO dto);
 
     void adjustPoints(Long userId, MemberPointsAdjustDTO dto);
+
+    /** 指定用户设置会员等级：更新 member_profile.level_id */
+    void assignLevel(Long userId, MemberLevelAssignDTO dto);
 }

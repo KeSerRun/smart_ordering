@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartordering.common.exception.BusinessException;
 import com.smartordering.common.result.PageResult;
 import com.smartordering.modules.member.dto.MemberGrowthRecordQueryDTO;
+import com.smartordering.modules.member.dto.MemberLevelAssignDTO;
 import com.smartordering.modules.member.dto.MemberLevelCreateDTO;
 import com.smartordering.modules.member.dto.MemberLevelStatusDTO;
 import com.smartordering.modules.member.dto.MemberLevelUpdateDTO;
@@ -31,6 +32,8 @@ import com.smartordering.modules.member.vo.MemberProfileVO;
 import com.smartordering.modules.system.entity.SysUser;
 import com.smartordering.modules.system.mapper.SysUserMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +53,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MemberServiceImpl implements MemberService {
 
     private final MemberProfileMapper memberProfileMapper;
@@ -289,6 +293,25 @@ public class MemberServiceImpl implements MemberService {
         pointsRecordMapper.insert(record);
     }
 
+    @Override
+    public void assignLevel(Long userId, MemberLevelAssignDTO dto) {
+        MemberProfile profile = memberProfileMapper.selectOne(
+                new LambdaQueryWrapper<MemberProfile>().eq(MemberProfile::getUserId, userId));
+        if (profile == null) {
+            throw new BusinessException("Member not found");
+        }
+        MemberLevel level = memberLevelMapper.selectById(dto.getLevelId());
+        if (level == null || level.getStatus() == null || level.getStatus() != 1) {
+            throw new BusinessException("会员等级不存在或已停用");
+        }
+
+        MemberProfile update = new MemberProfile();
+        update.setId(profile.getId());
+        update.setLevelId(level.getId());
+        memberProfileMapper.updateById(update);
+        log.info("Member level assigned: userId={}, levelId={}, levelName={}, operator=admin",
+                userId, level.getId(), level.getLevelName());
+    }
     // ==================== helpers ====================
 
     private MemberLevel getNextLevel(int currentSort) {
