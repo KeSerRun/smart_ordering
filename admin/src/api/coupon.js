@@ -5,7 +5,11 @@ export const createCouponTemplate = (d) => request.post('/admin/coupon/template'
 export const updateCouponTemplate = (id, d) => request.put(`/admin/coupon/template/${id}`, d)
 export const updateCouponTemplateStatus = (id, status) => request.put(`/admin/coupon/template/${id}/status`, null, { params: { status } })
 
-// ===== 发券任务（MQ 异步，支持按会员等级定向发放） =====
+// ===== 持券用户 =====
+export const listUserCoupons = (params) => request.get('/admin/coupon/user/page', { params })
+export const revokeUserCoupon = (id) => request.delete(`/admin/coupon/user/${id}/revoke`)
+
+// ===== 发券任务（MQ 异步，支持指定用户/全员/按会员等级发放） =====
 export const grantCoupons = (d) => request.post('/admin/coupon/grant', d)
 export const getGrantTask = (id) => request.get(`/admin/coupon/task/${id}`)
 export const listGrantTasks = (params) => request.get('/admin/coupon/task/page', { params })

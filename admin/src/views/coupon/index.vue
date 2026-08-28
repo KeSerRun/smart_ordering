@@ -9,8 +9,39 @@
         :columns="columns"
         :data="templates"
         :loading="loading"
-        :scroll-x="950"
+        :scroll-x="1050"
         :pagination="pagination"
+      />
+    </n-tab-pane>
+    <!-- 持券用户 -->
+    <n-tab-pane name="holders" tab="持券用户">
+      <n-space style="margin-bottom: 12px" align="center">
+        <n-select
+          v-model:value="holderQuery.templateId"
+          :options="templateOptions"
+          clearable
+          placeholder="选择优惠券模板"
+          style="width: 240px"
+          @update:value="loadHolders"
+        />
+        <n-select
+          v-model:value="holderQuery.status"
+          :options="holderStatusOptions"
+          clearable
+          placeholder="券状态"
+          style="width: 130px"
+          @update:value="loadHolders"
+        />
+        <n-input v-model:value="holderQuery.keyword" clearable placeholder="用户名/昵称/手机号" style="width: 180px" @keyup.enter="loadHolders" />
+        <n-button @click="loadHolders">查询</n-button>
+        <n-button @click="refreshHolders">刷新</n-button>
+      </n-space>
+      <n-data-table
+        :columns="holderColumns"
+        :data="holderRows"
+        :loading="holderLoading"
+        :scroll-x="1050"
+        :pagination="holderPagination"
       />
     </n-tab-pane>
     <!-- 发券任务 -->
@@ -49,14 +80,25 @@
   </n-modal>
 
   <!-- 发放弹窗 -->
-  <n-modal v-model:show="showGrant" preset="card" :title="`发放优惠券 - ${grantForm.templateName}`" style="width: 520px">
+  <n-modal v-model:show="showGrant" preset="card" :title="`发放优惠券 - ${grantForm.templateName}`" style="width: 560px">
     <n-form label-placement="top">
       <n-form-item label="发放方式">
         <n-radio-group v-model:value="grantForm.grantMode">
+          <n-radio :value="1">指定会员</n-radio>
           <n-radio :value="3">按会员等级</n-radio>
           <n-radio :value="2">全部会员</n-radio>
-          <n-radio :value="1" disabled>指定会员(敬请期待)</n-radio>
         </n-radio-group>
+      </n-form-item>
+      <n-form-item v-if="grantForm.grantMode === 1" label="目标会员（可多选，只发给选中的小程序会员）">
+        <n-select
+          v-model:value="grantForm.userIds"
+          multiple
+          filterable
+          :options="userOptions"
+          placeholder="请选择会员"
+          :loading="userLoading"
+          style="width: 100%"
+        />
       </n-form-item>
       <n-form-item v-if="grantForm.grantMode === 3" label="目标会员等级（可多选，只发给所选等级的会员）">
         <n-select
@@ -92,14 +134,17 @@
 
 <script setup>
 import { h, ref, onMounted, watch } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import {
   listCouponTemplates, createCouponTemplate, updateCouponTemplate, updateCouponTemplateStatus,
-  grantCoupons, getGrantTask, listGrantTasks, listGrantTaskDetails
+  grantCoupons, getGrantTask, listGrantTasks, listGrantTaskDetails,
+  listUserCoupons, revokeUserCoupon
 } from '@/api/coupon'
 import { memberLevels } from '@/api/member'
+import { listUsers } from '@/api/system'
 
 const message = useMessage()
+const dialog = useDialog()
 const tab = ref('template')
 const loading = ref(false)
 const saving = ref(false)
@@ -114,6 +159,8 @@ const pagination = ref({ page: 1, pageSize: 20, itemCount: 0 })
 
 const typeLabel = (t) => (t === 1 ? '满减' : t === 2 ? '折扣' : t === 3 ? '优惠' : '其他')
 
+const templateOptions = ref([])
+
 const columns = [
   { title: '名称', key: 'name', width: 180, ellipsis: { tooltip: true } },
   { title: '类型', key: 'type', width: 80, render: (r) => typeLabel(r.type) },
@@ -126,6 +173,7 @@ const columns = [
       h('span', {},
         [
           h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openGrant(r) }, '发放'),
+          h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openHoldersFor(r) }, '持券用户'),
           h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openEdit(r) }, '编辑'),
           r.status === 1
             ? h('a', { href: 'javascript:;', style: 'color:#c00', onClick: () => toggleStatus(r, 0) }, '停用')
@@ -133,12 +181,96 @@ const columns = [
         ]) }
 ]
 
+// ===== 持券用户 =====
+const holderQuery = ref({ templateId: null, status: null, keyword: '', pageNum: 1, pageSize: 10 })
+const holderRows = ref([])
+const holderLoading = ref(false)
+const holderPagination = ref({ page: 1, pageSize: 10, itemCount: 0 })
+
+const holderStatusOptions = [
+  { label: '未使用', value: 0 },
+  { label: '已使用', value: 1 },
+  { label: '已过期', value: 2 },
+  { label: '锁定', value: 3 }
+]
+
+const holderStatusLabel = (s) => {
+  const m = { 0: ['未使用', '#18a058'], 1: ['已使用', '#999'], 2: ['已过期', '#d03050'], 3: ['锁定', '#f0a020'] }
+  return (m[s] || ['未知', '#999'])
+}
+
+const holderColumns = [
+  { title: '优惠券', key: 'couponName', width: 180, ellipsis: { tooltip: true } },
+  { title: '用户', key: 'username', width: 130, render: (r) => r.nickname || r.username || '-' },
+  { title: '手机号', key: 'phone', width: 130, render: (r) => r.phone || '-' },
+  { title: '状态', key: 'status', width: 90, render: (r) => { const [label, color] = holderStatusLabel(r.status); return h('span', { style: `color:${color}` }, label) } },
+  { title: '领取时间', key: 'receivedTime', width: 170, render: (r) => (r.receivedTime ? String(r.receivedTime).replace('T', ' ') : '-') },
+  { title: '有效期至', key: 'validTo', width: 170, render: (r) => (r.validTo ? String(r.validTo).replace('T', ' ') : '-') },
+  {
+    title: '操作', key: 'op', width: 90,
+    render: (r) =>
+      r.status === 0
+        ? h('a', { href: 'javascript:;', style: 'color:#d03050', onClick: () => doRevoke(r) }, '收回')
+        : h('span', { style: 'color:#ccc' }, '-')
+  }
+]
+
+const loadHolders = async () => {
+  holderLoading.value = true
+  try {
+    const d = await listUserCoupons({
+      templateId: holderQuery.value.templateId || undefined,
+      status: holderQuery.value.status === null ? undefined : holderQuery.value.status,
+      keyword: holderQuery.value.keyword || undefined,
+      pageNum: holderQuery.value.pageNum,
+      pageSize: holderQuery.value.pageSize
+    })
+    holderRows.value = d.list || []
+    holderPagination.value.itemCount = d.total || 0
+  } finally { holderLoading.value = false }
+}
+
+const refreshHolders = () => {
+  holderQuery.value.pageNum = 1
+  loadHolders()
+}
+
+holderPagination.value.onChange = (p) => { holderQuery.value.pageNum = p; loadHolders() }
+
+// 从模板行「持券用户」进入：切 tab 并选中该模板
+const openHoldersFor = (r) => {
+  holderQuery.value = { templateId: r.id, status: null, keyword: '', pageNum: 1, pageSize: 10 }
+  tab.value = 'holders'
+  loadHolders()
+}
+
+const doRevoke = (r) => {
+  dialog.warning({
+    title: '收回优惠券',
+    content: `确认收回 ${r.nickname || r.username || r.userId} 持有的「${r.couponName}」？收回后该券不可使用。`,
+    positiveText: '确认收回',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await revokeUserCoupon(r.id)
+        message.success('已收回')
+        loadHolders()
+        loadTemplates() // 已发数量回退，刷新模板统计
+      } catch (e) {
+        message.error(e?.msg || '收回失败')
+      }
+    }
+  })
+}
+
 // ===== 发券任务 =====
-const grantForm = ref({ templateId: null, templateName: '', grantMode: 3, levelIds: [], remark: '' })
+const grantForm = ref({ templateId: null, templateName: '', grantMode: 3, levelIds: [], userIds: [], remark: '' })
 const showGrant = ref(false)
 const granting = ref(false)
 const levelOptions = ref([])
 const levelLoading = ref(false)
+const userOptions = ref([])
+const userLoading = ref(false)
 
 const tasks = ref([])
 const taskLoading = ref(false)
@@ -190,6 +322,7 @@ const loadTemplates = async () => {
     const d = await listCouponTemplates({ pageNum: pagination.value.page, pageSize: pagination.value.pageSize })
     templates.value = d.list
     pagination.value.itemCount = d.total
+    templateOptions.value = (d.list || []).map((t) => ({ label: t.name, value: t.id }))
   } finally { loading.value = false }
 }
 
@@ -209,6 +342,16 @@ const loadLevels = async () => {
     const list = await memberLevels()
     levelOptions.value = (list || []).map((l) => ({ label: l.levelName, value: l.id }))
   } finally { levelLoading.value = false }
+}
+
+// 加载小程序会员（指定用户发券用）
+const loadAppUsers = async () => {
+  if (userOptions.value.length) return
+  userLoading.value = true
+  try {
+    const d = await listUsers({ pageNum: 1, pageSize: 200, userType: 'APP' })
+    userOptions.value = (d.list || []).map((u) => ({ label: `${u.nickname || u.username}${u.phone ? ` (${u.phone})` : ''}`, value: u.id }))
+  } finally { userLoading.value = false }
 }
 
 pagination.value.onChange = (p) => { pagination.value.page = p; loadTemplates() }
@@ -242,14 +385,19 @@ const openGrant = async (r) => {
     message.warning('模板已停用，请先启用再发放')
     return
   }
-  grantForm.value = { templateId: r.id, templateName: r.name, grantMode: 3, levelIds: [], remark: '' }
+  grantForm.value = { templateId: r.id, templateName: r.name, grantMode: 3, levelIds: [], userIds: [], remark: '' }
   showGrant.value = true
   loadLevels()
+  loadAppUsers()
 }
 
 const submitGrant = async () => {
   if (grantForm.value.grantMode === 3 && (!grantForm.value.levelIds || !grantForm.value.levelIds.length)) {
     message.warning('请选择要发放的会员等级')
+    return
+  }
+  if (grantForm.value.grantMode === 1 && (!grantForm.value.userIds || !grantForm.value.userIds.length)) {
+    message.warning('请选择要发放的会员')
     return
   }
   granting.value = true
@@ -258,6 +406,7 @@ const submitGrant = async () => {
       templateId: grantForm.value.templateId,
       grantMode: grantForm.value.grantMode,
       levelIds: grantForm.value.grantMode === 3 ? grantForm.value.levelIds : undefined,
+      userIds: grantForm.value.grantMode === 1 ? grantForm.value.userIds : undefined,
       remark: grantForm.value.remark || undefined
     })
     if (task && task.id) {

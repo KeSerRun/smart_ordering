@@ -66,6 +66,13 @@ public class AdminCouponController {
         return Result.success(couponService.pageUserCoupons(dto));
     }
 
+    @Operation(summary = "Revoke a user coupon (unused only)")
+    @DeleteMapping("/user/{userCouponId}/revoke")
+    public Result<Void> revokeUserCoupon(@PathVariable Long userCouponId) {
+        couponService.revokeUserCoupon(userCouponId);
+        return Result.success();
+    }
+
     // ===== 发券任务 =====
 
     @Operation(summary = "Submit coupon grant task (async, supports by-level grants)")

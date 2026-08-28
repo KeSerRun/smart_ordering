@@ -40,6 +40,9 @@ public interface CouponService {
 
     PageResult<UserCouponVO> pageUserCoupons(UserCouponQueryDTO dto);
 
+    /** 手动收回用户券：仅未使用(0)可收回，收回后回退模板已发数量 */
+    void revokeUserCoupon(Long userCouponId);
+
     // ===== 发券任务（MQ 异步，支持按会员等级定向发放） =====
 
     /** 提交发券任务：登记任务 + 写 MQ 发件箱，异步执行 */

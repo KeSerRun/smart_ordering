@@ -196,6 +196,47 @@ public class CouponServiceImpl implements CouponService {
         return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
     }
 
+    @Override
+    @Transactional
+    public void revokeUserCoupon(Long userCouponId) {
+        UserCoupon uc = userCouponMapper.selectById(userCouponId);
+        if (uc == null) {
+            throw new BusinessException("用户券不存在或已收回");
+        }
+        if (uc.getStatus() != null && uc.getStatus() != 0) {
+            throw new BusinessException("仅未使用的券可以收回（当前状态：" + statusText(uc.getStatus()) + "）");
+        }
+        // 物理删除：用户券无唯一键冲突，删除后用户即不再持有
+        userCouponMapper.deleteById(userCouponId);
+
+        // 回退模板已发数量
+        if (uc.getTemplateId() != null) {
+            CouponTemplate template = couponTemplateMapper.selectById(uc.getTemplateId());
+            if (template != null && template.getIssuedQuantity() != null && template.getIssuedQuantity() > 0) {
+                CouponTemplate update = new CouponTemplate();
+                update.setId(template.getId());
+                update.setIssuedQuantity(template.getIssuedQuantity() - 1);
+                couponTemplateMapper.updateById(update);
+            }
+        }
+        log.info("User coupon revoked: userCouponId={}, userId={}, templateId={}",
+                userCouponId, uc.getUserId(), uc.getTemplateId());
+    }
+
+    /** 用户券状态文案（用于收回校验提示） */
+    private String statusText(Integer status) {
+        if (status == null) {
+            return "未知";
+        }
+        return switch (status) {
+            case 0 -> "未使用";
+            case 1 -> "已使用";
+            case 2 -> "已过期";
+            case 3 -> "锁定";
+            default -> "未知";
+        };
+    }
+
     // ==================== 发券任务 ====================
 
     @Override
