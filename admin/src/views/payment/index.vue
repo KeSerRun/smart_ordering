@@ -79,7 +79,7 @@
 
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useMessage, NButton } from 'naive-ui'
 import { listPayments, cashPay } from '@/api/payment'
 import { listOrders } from '@/api/order'
 
@@ -116,7 +116,7 @@ const pendingColumns = [
   { title: '下单时间', key: 'createTime', width: 165, render: (r) => (r.createTime ? String(r.createTime).replace('T', ' ') : '-') },
   {
     title: '操作', key: 'op', width: 80, fixed: 'right',
-    render: (r) => h('a', { href: 'javascript:;', style: 'color:#18a058;font-weight:600', onClick: () => selectAndPay(r) }, '收银')
+    render: (r) => h(NButton, { size: 'small', text: true, type: 'success', onClick: () => selectAndPay(r) }, { default: () => '收银' })
   }
 ]
 

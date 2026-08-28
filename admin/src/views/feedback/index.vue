@@ -22,7 +22,7 @@
 
 <script setup>
 import { h, ref, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useMessage, NButton } from 'naive-ui'
 import { listFeedback, replyFeedback } from '@/api/feedback'
 const message = useMessage()
 const rows = ref([])
@@ -38,7 +38,7 @@ const columns = [
   { title: '状态', key: 'status', render: (r) => (r.status === 1 ? '未处理' : '已回复'), width: 80 },
   { title: '回复内容', key: 'replyContent', width: 240, ellipsis: { tooltip: true }, render: (r) => r.replyContent || '-' },
   { title: '时间', key: 'createTime', width: 160 },
-  { title: '操作', key: 'op', width: 60, render: (r) => h('a', { href: 'javascript:;', onClick: () => { form.value = { ...r }; showModal.value = true } }, '回复') }
+  { title: '操作', key: 'op', width: 60, render: (r) => h(NButton, { size: 'small', text: true, onClick: () => { form.value = { ...r }; showModal.value = true } }, { default: () => '回复' }) }
 ]
 
 const load = async () => {

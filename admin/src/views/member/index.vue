@@ -63,7 +63,7 @@
 
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useMessage, NSpace } from 'naive-ui'
 import { listMembers, memberLevels, createMemberLevel, updateMemberLevel, updateMemberLevelStatus, listMemberPoints, adjustMemberPoints, assignMemberLevel } from '@/api/member'
 
 const message = useMessage()
@@ -96,10 +96,10 @@ const mColumns = [
   { title: '成长值', key: 'growthValue', width: 90 },
   { title: '积分', key: 'pointsBalance', width: 90 },
   { title: '状态', key: 'status', width: 70, render: (r) => (r.status === 1 ? '正常' : '禁用') },
-  { title: '操作', key: 'op', width: 160, render: (r) => h('span', {},
-    [
-      h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openAssignLevel(r) }, '设置等级'),
-      h('a', { href: 'javascript:;', onClick: () => openAdjust(r) }, '调整积分')
+  { title: '操作', key: 'op', width: 160, render: (r) =>
+      h(NSpace, { size: 4, justify: 'center' }, () => [
+      h(NButton, { size: 'small', text: true, onClick: () => openAssignLevel(r) }, { default: () => '设置等级' }),
+      h(NButton, { size: 'small', text: true, onClick: () => openAdjust(r) }, { default: () => '调整积分' })
     ]) }
 ]
 
@@ -110,12 +110,12 @@ const lColumns = [
   { title: '积分倍率', key: 'pointsRate', width: 100 },
   { title: '折扣率', key: 'discountRate', width: 100 },
   { title: '状态', key: 'status', width: 70, render: (r) => (r.status === 1 ? '启用' : '停用') },
-  { title: '操作', key: 'op', render: (r) => h('span', {},
-    [
-      h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openEditLevel(r) }, '编辑'),
+  { title: '操作', key: 'op', render: (r) =>
+      h(NSpace, { size: 4, justify: 'center' }, () => [
+      h(NButton, { size: 'small', text: true, onClick: () => openEditLevel(r) }, { default: () => '编辑' }),
       r.status === 1
-        ? h('a', { href: 'javascript:;', style: 'color:#c00', onClick: () => toggleLevel(r, 0) }, '停用')
-        : h('a', { href: 'javascript:;', onClick: () => toggleLevel(r, 1) }, '启用')
+        ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => toggleLevel(r, 0) }, { default: () => '停用' })
+        : h(NButton, { size: 'small', text: true, onClick: () => toggleLevel(r, 1) }, { default: () => '启用' })
     ]) }
 ]
 

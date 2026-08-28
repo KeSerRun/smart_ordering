@@ -170,14 +170,13 @@ const columns = [
   { title: '限领', key: 'perUserLimit', width: 70 },
   { title: '状态', key: 'status', render: (r) => (r.status === 1 ? '启用' : '停用'), width: 70 },
   { title: '操作', key: 'op', render: (r) =>
-      h('span', {},
-        [
-          h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openGrant(r) }, '发放'),
-          h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openHoldersFor(r) }, '持券用户'),
-          h('a', { href: 'javascript:;', style: 'margin-right:10px', onClick: () => openEdit(r) }, '编辑'),
+      h(NSpace, { size: 4, justify: 'center' }, () => [
+          h(NButton, { size: 'small', text: true, onClick: () => openGrant(r) }, { default: () => '发放' }),
+          h(NButton, { size: 'small', text: true, onClick: () => openHoldersFor(r) }, { default: () => '持券用户' }),
+          h(NButton, { size: 'small', text: true, onClick: () => openEdit(r) }, { default: () => '编辑' }),
           r.status === 1
-            ? h('a', { href: 'javascript:;', style: 'color:#c00', onClick: () => toggleStatus(r, 0) }, '停用')
-            : h('a', { href: 'javascript:;', onClick: () => toggleStatus(r, 1) }, '启用')
+            ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => toggleStatus(r, 0) }, { default: () => '停用' })
+            : h(NButton, { size: 'small', text: true, onClick: () => toggleStatus(r, 1) }, { default: () => '启用' })
         ]) }
 ]
 
@@ -210,7 +209,7 @@ const holderColumns = [
     title: '操作', key: 'op', width: 90,
     render: (r) =>
       r.status === 0
-        ? h('a', { href: 'javascript:;', style: 'color:#d03050', onClick: () => doRevoke(r) }, '收回')
+        ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => doRevoke(r) }, { default: () => '收回' })
         : h('span', { style: 'color:#ccc' }, '-')
   }
 ]
@@ -305,7 +304,7 @@ const taskColumns = [
   { title: '开始时间', key: 'startedTime', width: 165, render: (r) => r.startedTime ? String(r.startedTime).replace('T', ' ') : '-' },
   { title: '完成时间', key: 'finishedTime', width: 165, render: (r) => r.finishedTime ? String(r.finishedTime).replace('T', ' ') : '-' },
   { title: '操作', key: 'op', width: 70, render: (r) =>
-      h('a', { href: 'javascript:;', onClick: () => openDetail(r) }, '明细') }
+      h(NButton, { size: 'small', text: true, onClick: () => openDetail(r) }, { default: () => '明细' }) }
 ]
 
 const detailColumns = [

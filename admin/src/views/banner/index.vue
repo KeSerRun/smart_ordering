@@ -84,11 +84,11 @@ const columns = [
     title: '操作', key: 'op', width: 190,
     render: (r) =>
       h(NSpace, { size: 4 }, () => [
-        h('a', { href: 'javascript:;', style: 'margin-right:4px', onClick: () => openModal(r) }, '编辑'),
+        h(NButton, { size: 'small', text: true, onClick: () => openModal(r) }, { default: () => '编辑' }),
         r.status === 1
-          ? h('a', { href: 'javascript:;', style: 'color:#c00;margin-right:4px', onClick: () => toggle(r, 0) }, '停用')
-          : h('a', { href: 'javascript:;', style: 'margin-right:4px', onClick: () => toggle(r, 1) }, '启用'),
-        h('a', { href: 'javascript:;', style: 'color:#c00', onClick: () => remove(r) }, '删除')
+          ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => toggle(r, 0) }, { default: () => '停用' })
+          : h(NButton, { size: 'small', text: true, onClick: () => toggle(r, 1) }, { default: () => '启用' }),
+        h(NButton, { size: 'small', text: true, type: 'error', onClick: () => remove(r) }, { default: () => '删除' })
       ])
   }
 ]

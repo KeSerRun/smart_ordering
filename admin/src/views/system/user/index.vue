@@ -110,13 +110,13 @@ const columns = [
     title: '操作', key: 'op', width: 220,
     render: (r) =>
       h(NSpace, { size: 4 }, () => [
-        h('a', { href: 'javascript:;', style: 'margin-right:4px', onClick: () => openModal(r) }, '编辑'),
-        h('a', { href: 'javascript:;', style: 'margin-right:4px', onClick: () => openPwdModal(r) }, '重置密码'),
+        h(NButton, { size: 'small', text: true, onClick: () => openModal(r) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', text: true, onClick: () => openPwdModal(r) }, { default: () => '重置密码' }),
         r.status === 1 && r.username !== 'admin'
-          ? h('a', { href: 'javascript:;', style: 'color:#c00;margin-right:4px', onClick: () => toggle(r, 0) }, '禁用')
-          : r.username !== 'admin' && h('a', { href: 'javascript:;', style: 'margin-right:4px', onClick: () => toggle(r, 1) }, '启用'),
+          ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => toggle(r, 0) }, { default: () => '禁用' })
+          : r.username !== 'admin' && h(NButton, { size: 'small', text: true, onClick: () => toggle(r, 1) }, { default: () => '启用' }),
         r.username !== 'admin'
-          ? h('a', { href: 'javascript:;', style: 'color:#c00', onClick: () => remove(r) }, '删除')
+          ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => remove(r) }, { default: () => '删除' })
           : null
       ])
   }
