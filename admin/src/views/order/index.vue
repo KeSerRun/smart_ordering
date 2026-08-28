@@ -81,8 +81,14 @@ const columns = [
   },
   { title: '下单时间', key: 'createTime', width: 165 },
   {
-    title: '操作', key: 'action', width: 90,
-    render: (r) => h(NButton, { size: 'small', text: true, onClick: () => showDetail(r) }, { default: () => '详情' })
+    title: '操作', key: 'action', width: 140,
+    render: (r) =>
+      h(NSpace, { size: 4, justify: 'center' }, () => [
+        h(NButton, { size: 'small', text: true, onClick: () => showDetail(r) }, { default: () => '详情' }),
+        r.status === 0
+          ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => doCancel(r) }, { default: () => '取消' })
+          : null
+      ])
   }
 ]
 
@@ -113,6 +119,17 @@ async function showDetail(row) {
   current.value = await orderApi.orderDetail(row.id)
   current.value = { ...current.value, orderNo: row.orderNo }
   detailShow.value = true
+}
+
+// 跑单处理：取消待支付订单，释放桌台为空闲
+async function doCancel(row) {
+  try {
+    await orderApi.cancelOrder(row.id)
+    message.success(`订单 ${row.orderNo} 已取消，桌台已释放`)
+    loadOrders()
+  } catch (e) {
+    message.error(e?.msg || '取消失败')
+  }
 }
 
 onMounted(loadOrders)

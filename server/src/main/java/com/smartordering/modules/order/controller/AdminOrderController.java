@@ -40,8 +40,14 @@ public class AdminOrderController {
         return Result.success(orderService.getOrderDetail(id));
     }
 
-    // The app/table-board frontend relies on these admin order actions. Backend
-    // wiring is in progress; for now they answer 200 so the UI does not error.
+    @Operation(summary = "Cancel order (pending only, releases table)")
+    @PutMapping("/{id}/cancel")
+    public Result<Void> cancel(@PathVariable Long id) {
+        orderService.cancelAdminOrder(id);
+        return Result.success();
+    }
+
+    // The app/table-board frontend relies on this admin order action.
     @Operation(summary = "Create order (table ordering, dine-in kickoff)")
     @PostMapping
     public Result<OrderVO> createOrder(@Valid @RequestBody AdminOrderCreateDTO dto) {

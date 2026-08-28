@@ -20,5 +20,8 @@ public interface OrderService {
 
     OrderVO getOrderDetail(Long orderId);
 
+    /** 管理端取消订单：仅待支付订单可取消，取消后释放桌台为空闲 */
+    void cancelAdminOrder(Long orderId);
+
     PageResult<OrderVO> listOrdersForAdmin(int pageNum, int pageSize, OrderQueryDTO dto);
 }

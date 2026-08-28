@@ -53,11 +53,11 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
-        private final OrderItemMapper orderItemMapper;
-        private final CartService cartService;
-        private final DiningTableMapper diningTableMapper;
-        private final DishMapper dishMapper;
-        private final ReliableMessageService reliableMessageService;
+    private final OrderItemMapper orderItemMapper;
+    private final CartService cartService;
+    private final DiningTableMapper diningTableMapper;
+    private final DishMapper dishMapper;
+    private final ReliableMessageService reliableMessageService;
 
     @Override
     @Transactional
@@ -125,133 +125,133 @@ public class OrderServiceImpl implements OrderService {
         cartService.clearCart(userId, dto.getTableId());
 
         log.info("Order created: orderNo={}, tableId={}, amount={}", order.getOrderNo(), dto.getTableId(), originalAmount);
-                return getOrderDetail(order.getId());
+        return getOrderDetail(order.getId());
+    }
+
+    /**
+     * 管理端点餐：桌台开台直接下单（不走购物车）。
+     * 校验桌台空闲 → 汇总菜品金额 → 建订单与明细 → 桌台置占用 → 发 MQ 后厨事件。
+     */
+    @Override
+    @Transactional
+    public OrderVO createAdminOrder(AdminOrderCreateDTO dto) {
+        if (dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new BusinessException("请至少选择一个菜品");
+        }
+        DiningTable table = diningTableMapper.selectById(dto.getTableId());
+        if (table == null) {
+            throw new BusinessException("桌台不存在");
+        }
+        if (table.getStatus() != null && table.getStatus() != 0) {
+            throw new BusinessException("桌台当前不是空闲状态，无法开台点餐");
+        }
+
+        // 汇总菜品与金额
+        BigDecimal originalAmount = BigDecimal.ZERO;
+        List<Object[]> details = new ArrayList<>();
+        for (AdminOrderCreateDTO.Item item : dto.getItems()) {
+            Dish dish = dishMapper.selectById(item.getDishId());
+            if (dish == null || dish.getStatus() == null || dish.getStatus() != 1) {
+                throw new BusinessException("菜品不存在或已下架: " + item.getDishId());
             }
+            BigDecimal amount = dish.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
+            originalAmount = originalAmount.add(amount);
+            details.add(new Object[]{dish, item.getQuantity(), amount});
+        }
 
-            /**
-             * 管理端点餐：桌台开台直接下单（不走购物车）。
-             * 校验桌台空闲 → 汇总菜品金额 → 建订单与明细 → 桌台置占用 → 发 MQ 后厨事件。
-             */
-            @Override
-            @Transactional
-            public OrderVO createAdminOrder(AdminOrderCreateDTO dto) {
-                if (dto.getItems() == null || dto.getItems().isEmpty()) {
-                    throw new BusinessException("请至少选择一个菜品");
-                }
-                DiningTable table = diningTableMapper.selectById(dto.getTableId());
-                if (table == null) {
-                    throw new BusinessException("桌台不存在");
-                }
-                if (table.getStatus() != null && table.getStatus() != 0) {
-                    throw new BusinessException("桌台当前不是空闲状态，无法开台点餐");
-                }
+        // 建单
+        Order order = new Order();
+        order.setOrderNo(generateOrderNo());
+        order.setTableId(table.getId());
+        order.setTableCode(table.getCode());
+        order.setOriginalAmount(originalAmount);
+        order.setDiscountRate(BigDecimal.ONE);
+        order.setActualAmount(originalAmount);
+        order.setPointsUsed(0);
+        order.setPointsDiscountAmount(BigDecimal.ZERO);
+        order.setPaidAmount(BigDecimal.ZERO);
+        order.setStatus(0);
+        order.setPaymentMode(1);
+        order.setOrderType(0);
+        order.setRemark(dto.getRemark());
+        orderMapper.insert(order);
 
-                // 汇总菜品与金额
-                BigDecimal originalAmount = BigDecimal.ZERO;
-                List<Object[]> details = new ArrayList<>();
-                for (AdminOrderCreateDTO.Item item : dto.getItems()) {
-                    Dish dish = dishMapper.selectById(item.getDishId());
-                    if (dish == null || dish.getStatus() == null || dish.getStatus() != 1) {
-                        throw new BusinessException("菜品不存在或已下架: " + item.getDishId());
-                    }
-                    BigDecimal amount = dish.getPrice().multiply(BigDecimal.valueOf(item.getQuantity()));
-                    originalAmount = originalAmount.add(amount);
-                    details.add(new Object[]{dish, item.getQuantity(), amount});
-                }
+        // 订单项
+        List<OrderCreatedEvent.Item> eventItems = new ArrayList<>();
+        for (Object[] row : details) {
+            Dish dish = (Dish) row[0];
+            int qty = (Integer) row[1];
+            BigDecimal amount = (BigDecimal) row[2];
+            OrderItem oi = new OrderItem();
+            oi.setOrderId(order.getId());
+            oi.setDishId(dish.getId());
+            oi.setDishName(dish.getName());
+            oi.setDishImage(dish.getImage());
+            oi.setPrice(dish.getPrice());
+            oi.setQuantity(qty);
+            oi.setAmount(amount);
+            oi.setRemark(null);
+            oi.setStatus(0);
+            oi.setPaymentStatus(0);
+            oi.setIsGift(0);
+            oi.setAddedAt(LocalDateTime.now());
+            orderItemMapper.insert(oi);
+            eventItems.add(OrderCreatedEvent.Item.builder()
+                    .dishId(dish.getId()).dishName(dish.getName())
+                    .quantity(qty).amount(amount).build());
+        }
 
-                // 建单
-                Order order = new Order();
-                order.setOrderNo(generateOrderNo());
-                order.setTableId(table.getId());
-                order.setTableCode(table.getCode());
-                order.setOriginalAmount(originalAmount);
-                order.setDiscountRate(BigDecimal.ONE);
-                order.setActualAmount(originalAmount);
-                order.setPointsUsed(0);
-                order.setPointsDiscountAmount(BigDecimal.ZERO);
-                order.setPaidAmount(BigDecimal.ZERO);
-                order.setStatus(0);
-                order.setPaymentMode(1);
-                order.setOrderType(0);
-                order.setRemark(dto.getRemark());
-                orderMapper.insert(order);
+        // 桌台置占用
+        DiningTable update = new DiningTable();
+        update.setId(table.getId());
+        update.setStatus(1);
+        diningTableMapper.updateById(update);
 
-                // 订单项
-                List<OrderCreatedEvent.Item> eventItems = new ArrayList<>();
-                for (Object[] row : details) {
-                    Dish dish = (Dish) row[0];
-                    int qty = (Integer) row[1];
-                    BigDecimal amount = (BigDecimal) row[2];
-                    OrderItem oi = new OrderItem();
-                    oi.setOrderId(order.getId());
-                    oi.setDishId(dish.getId());
-                    oi.setDishName(dish.getName());
-                    oi.setDishImage(dish.getImage());
-                    oi.setPrice(dish.getPrice());
-                    oi.setQuantity(qty);
-                    oi.setAmount(amount);
-                    oi.setRemark(null);
-                    oi.setStatus(0);
-                    oi.setPaymentStatus(0);
-                    oi.setIsGift(0);
-                    oi.setAddedAt(LocalDateTime.now());
-                    orderItemMapper.insert(oi);
-                    eventItems.add(OrderCreatedEvent.Item.builder()
-                            .dishId(dish.getId()).dishName(dish.getName())
-                            .quantity(qty).amount(amount).build());
-                }
+        // 可靠消息：发 MQ 后厨事件（同 App 下单链路）
+        Long userId = StpUtil.getLoginIdAsLong();
+        reliableMessageService.send(
+                "ORDER:" + order.getOrderNo(),
+                "order.created",
+                "NEW_ORDER",
+                "ORDER",
+                String.valueOf(order.getId()),
+                OrderCreatedEvent.builder()
+                        .messageKey("ORDER:" + order.getOrderNo())
+                        .orderId(order.getId())
+                        .orderNo(order.getOrderNo())
+                        .tableId(order.getTableId())
+                        .tableCode(order.getTableCode())
+                        .orderType(order.getOrderType())
+                        .paymentMode(order.getPaymentMode())
+                        .status(order.getStatus())
+                        .originalAmount(originalAmount)
+                        .actualAmount(originalAmount)
+                        .remark(order.getRemark())
+                        .userId(userId)
+                        .createdAt(LocalDateTime.now())
+                        .items(eventItems)
+                        .build());
 
-                // 桌台置占用
-                DiningTable update = new DiningTable();
-                update.setId(table.getId());
-                update.setStatus(1);
-                diningTableMapper.updateById(update);
+        log.info("Admin order created: orderNo={}, tableId={}, amount={}",
+                order.getOrderNo(), dto.getTableId(), originalAmount);
+        return getOrderDetail(order.getId());
+    }
 
-                // 可靠消息：发 MQ 后厨事件（同 App 下单链路）
-                Long userId = StpUtil.getLoginIdAsLong();
-                reliableMessageService.send(
-                        "ORDER:" + order.getOrderNo(),
-                        "order.created",
-                        "NEW_ORDER",
-                        "ORDER",
-                        String.valueOf(order.getId()),
-                        OrderCreatedEvent.builder()
-                                .messageKey("ORDER:" + order.getOrderNo())
-                                .orderId(order.getId())
-                                .orderNo(order.getOrderNo())
-                                .tableId(order.getTableId())
-                                .tableCode(order.getTableCode())
-                                .orderType(order.getOrderType())
-                                .paymentMode(order.getPaymentMode())
-                                .status(order.getStatus())
-                                .originalAmount(originalAmount)
-                                .actualAmount(originalAmount)
-                                .remark(order.getRemark())
-                                .userId(userId)
-                                .createdAt(LocalDateTime.now())
-                                .items(eventItems)
-                                .build());
-
-                log.info("Admin order created: orderNo={}, tableId={}, amount={}",
-                        order.getOrderNo(), dto.getTableId(), originalAmount);
-                return getOrderDetail(order.getId());
-            }
-
-            /**
-             * Build the order-created event payload (written into the reliable-message outbox,
-             * published to RabbitMQ, then broadcast to the kitchen screen).
-             */
-            private OrderCreatedEvent buildOrderCreatedEvent(Order order, Long userId, CartVO cart) {
-                List<OrderCreatedEvent.Item> items = cart.getItems().stream()
-                        .map(i -> OrderCreatedEvent.Item.builder()
-                                .dishId(i.getDishId())
-                                .dishName(i.getDishName())
-                                .quantity(i.getQuantity())
-                                .amount(i.getAmount())
-                                .remark(i.getRemark())
-                                .build())
-                        .collect(Collectors.toList());
-                return OrderCreatedEvent.builder()
+    /**
+     * Build the order-created event payload (written into the reliable-message outbox,
+     * published to RabbitMQ, then broadcast to the kitchen screen).
+     */
+    private OrderCreatedEvent buildOrderCreatedEvent(Order order, Long userId, CartVO cart) {
+        List<OrderCreatedEvent.Item> items = cart.getItems().stream()
+                .map(i -> OrderCreatedEvent.Item.builder()
+                        .dishId(i.getDishId())
+                        .dishName(i.getDishName())
+                        .quantity(i.getQuantity())
+                        .amount(i.getAmount())
+                        .remark(i.getRemark())
+                        .build())
+                .collect(Collectors.toList());
+        return OrderCreatedEvent.builder()
                 .messageKey("ORDER:" + order.getOrderNo())
                 .orderId(order.getId())
                 .orderNo(order.getOrderNo())
@@ -267,6 +267,42 @@ public class OrderServiceImpl implements OrderService {
                 .createdAt(order.getCreateTime() != null ? order.getCreateTime() : LocalDateTime.now())
                 .items(items)
                 .build();
+    }
+
+    /**
+     * 管理端取消订单：仅待支付订单可取消，取消后释放桌台为空闲。
+     * 桌台点餐跑单场景：取消未结账订单，桌台恢复可再次开台。
+     */
+    @Override
+    @Transactional
+    public void cancelAdminOrder(Long orderId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("Order not found");
+        }
+        if (order.getStatus() != null && order.getStatus() != 0) {
+            throw new BusinessException("仅待支付订单可取消");
+        }
+
+        // 置取消
+        Order update = new Order();
+        update.setId(order.getId());
+        update.setStatus(2);
+        orderMapper.updateById(update);
+
+        // 如果桌台仍被该订单占用（占用 = 1），释放为空闲
+        if (order.getTableId() != null) {
+            DiningTable table = diningTableMapper.selectById(order.getTableId());
+            if (table != null && table.getStatus() != null && table.getStatus() == 1) {
+                DiningTable tableUpdate = new DiningTable();
+                tableUpdate.setId(table.getId());
+                tableUpdate.setStatus(0);
+                diningTableMapper.updateById(tableUpdate);
+            }
+        }
+
+        log.info("Admin order cancelled: orderId={}, orderNo={}, tableId={}",
+                orderId, order.getOrderNo(), order.getTableId());
     }
 
     @Override
@@ -291,45 +327,45 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private String generateOrderNo() {
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
-            int random = ThreadLocalRandom.current().nextInt(100, 999);
-            return "SO" + timestamp + random;
-        }
-
-        @Override
-        public PageResult<OrderVO> listOrdersForAdmin(int pageNum, int pageSize, OrderQueryDTO dto) {
-            LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
-                    if (dto != null) {
-                                            wrapper.eq(dto.getStatus() != null, Order::getStatus, dto.getStatus())
-                                                    .eq(dto.getTableId() != null, Order::getTableId, dto.getTableId())
-                                                    .like(StringUtils.hasText(dto.getTableCode()), Order::getTableCode, dto.getTableCode())
-                                                    .like(StringUtils.hasText(dto.getOrderNo()), Order::getOrderNo, dto.getOrderNo());
-                        if (dto.getStartDate() != null) {
-                            wrapper.ge(Order::getCreateTime, dto.getStartDate().atStartOfDay());
-                        }
-                        if (dto.getEndDate() != null) {
-                            wrapper.le(Order::getCreateTime, dto.getEndDate().atStartOfDay().plusDays(1));
-                        }
-                    }
-            wrapper.orderByDesc(Order::getCreateTime);
-            Page<Order> page = new Page<>(pageNum, pageSize);
-            orderMapper.selectPage(page, wrapper);
-
-            Set<Long> orderIds = page.getRecords().stream().map(Order::getId).collect(Collectors.toSet());
-            Map<Long, List<OrderItem>> itemsByOrder = orderIds.isEmpty() ? Collections.emptyMap()
-                    : orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>().in(OrderItem::getOrderId, orderIds))
-                            .stream().collect(Collectors.groupingBy(OrderItem::getOrderId));
-
-            List<OrderVO> list = page.getRecords().stream().map(order -> {
-                OrderVO vo = new OrderVO();
-                BeanUtils.copyProperties(order, vo);
-                vo.setItems(itemsByOrder.getOrDefault(order.getId(), Collections.emptyList()).stream().map(i -> {
-                    OrderItemVO iv = new OrderItemVO();
-                    BeanUtils.copyProperties(i, iv);
-                    return iv;
-                }).collect(Collectors.toList()));
-                return vo;
-            }).collect(Collectors.toList());
-            return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
-        }
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS"));
+        int random = ThreadLocalRandom.current().nextInt(100, 999);
+        return "SO" + timestamp + random;
     }
+
+    @Override
+    public PageResult<OrderVO> listOrdersForAdmin(int pageNum, int pageSize, OrderQueryDTO dto) {
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        if (dto != null) {
+            wrapper.eq(dto.getStatus() != null, Order::getStatus, dto.getStatus())
+                    .eq(dto.getTableId() != null, Order::getTableId, dto.getTableId())
+                    .like(StringUtils.hasText(dto.getTableCode()), Order::getTableCode, dto.getTableCode())
+                    .like(StringUtils.hasText(dto.getOrderNo()), Order::getOrderNo, dto.getOrderNo());
+            if (dto.getStartDate() != null) {
+                wrapper.ge(Order::getCreateTime, dto.getStartDate().atStartOfDay());
+            }
+            if (dto.getEndDate() != null) {
+                wrapper.le(Order::getCreateTime, dto.getEndDate().atStartOfDay().plusDays(1));
+            }
+        }
+        wrapper.orderByDesc(Order::getCreateTime);
+        Page<Order> page = new Page<>(pageNum, pageSize);
+        orderMapper.selectPage(page, wrapper);
+
+        Set<Long> orderIds = page.getRecords().stream().map(Order::getId).collect(Collectors.toSet());
+        Map<Long, List<OrderItem>> itemsByOrder = orderIds.isEmpty() ? Collections.emptyMap()
+                : orderItemMapper.selectList(new LambdaQueryWrapper<OrderItem>().in(OrderItem::getOrderId, orderIds))
+                        .stream().collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+        List<OrderVO> list = page.getRecords().stream().map(order -> {
+            OrderVO vo = new OrderVO();
+            BeanUtils.copyProperties(order, vo);
+            vo.setItems(itemsByOrder.getOrDefault(order.getId(), Collections.emptyList()).stream().map(i -> {
+                OrderItemVO iv = new OrderItemVO();
+                BeanUtils.copyProperties(i, iv);
+                return iv;
+            }).collect(Collectors.toList()));
+            return vo;
+        }).collect(Collectors.toList());
+        return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
+    }
+}
