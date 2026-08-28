@@ -36,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -311,6 +313,103 @@ public class MemberServiceImpl implements MemberService {
         memberProfileMapper.updateById(update);
         log.info("Member level assigned: userId={}, levelId={}, levelName={}, operator=admin",
                 userId, level.getId(), level.getLevelName());
+    }
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void accumulateConsume(Long userId, BigDecimal amount, Long orderId) {
+        if (userId == null || amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        MemberProfile profile = memberProfileMapper.selectOne(
+                new LambdaQueryWrapper<MemberProfile>().eq(MemberProfile::getUserId, userId));
+        if (profile == null) {
+            // 非会员用户不累计（当前无自动建档逻辑）
+            log.info("Consume accumulate skipped, member profile not found: userId={}", userId);
+            return;
+        }
+        MemberLevel level = memberLevelMapper.selectById(profile.getLevelId());
+        // 1. 积分 = 实付金额 × 等级积分倍率（向下取整）；倍率默认 1
+        BigDecimal rate = (level != null && level.getPointsRate() != null) ? level.getPointsRate() : BigDecimal.ONE;
+        int pointsGain = amount.multiply(rate).setScale(0, java.math.RoundingMode.DOWN).intValue();
+        // 2. 成长值 = 实付金额（1:1，向下取整）
+        int growthGain = amount.setScale(0, java.math.RoundingMode.DOWN).intValue();
+
+        int oldPoints = profile.getPointsBalance() == null ? 0 : profile.getPointsBalance();
+        int oldGrowth = profile.getGrowthValue() == null ? 0 : profile.getGrowthValue();
+        int oldTotalEarned = profile.getTotalPointsEarned() == null ? 0 : profile.getTotalPointsEarned();
+        BigDecimal oldConsumed = profile.getTotalAmountConsumed() == null ? BigDecimal.ZERO : profile.getTotalAmountConsumed();
+
+        int newPoints = oldPoints + pointsGain;
+        int newGrowth = oldGrowth + growthGain;
+        MemberProfile update = new MemberProfile();
+        update.setId(profile.getId());
+        update.setPointsBalance(newPoints);
+        update.setTotalPointsEarned(oldTotalEarned + pointsGain);
+        update.setGrowthValue(newGrowth);
+        update.setTotalAmountConsumed(oldConsumed.add(amount));
+        update.setLastConsumeTime(LocalDateTime.now());
+
+        // 3. 自动升级：成长值达到更高启用等级门槛则升级（阶梯逐级）
+        MemberLevel upgraded = tryUpgrade(profile.getLevelId(), newGrowth);
+        if (upgraded != null) {
+            update.setLevelId(upgraded.getId());
+            log.info("Member auto-upgraded: userId={}, oldLevelId={}, newLevelId={}, levelName={}",
+                    userId, profile.getLevelId(), upgraded.getId(), upgraded.getLevelName());
+        }
+        memberProfileMapper.updateById(update);
+
+        // 4. 写积分流水
+        MemberPointsRecord pr = new MemberPointsRecord();
+        pr.setMemberId(profile.getId());
+        pr.setUserId(userId);
+        pr.setChangeType(1); // 收入
+        pr.setBizType("ORDER_PAY");
+        pr.setBizId(orderId);
+        pr.setChangeAmount(pointsGain);
+        pr.setBalanceAfter(newPoints);
+        pr.setRemark("消费累计积分：实付¥" + amount.toPlainString()
+                + (level != null ? "（" + level.getLevelName() + " ×" + rate.stripTrailingZeros().toPlainString() + "）" : ""));
+        pr.setCreateTime(LocalDateTime.now());
+        pointsRecordMapper.insert(pr);
+
+        // 5. 写成长值流水
+        MemberGrowthRecord gr = new MemberGrowthRecord();
+        gr.setMemberId(profile.getId());
+        gr.setUserId(userId);
+        gr.setBizType("ORDER_PAY");
+        gr.setBizId(orderId);
+        gr.setChangeAmount(growthGain);
+        gr.setGrowthAfter(newGrowth);
+        gr.setRemark("消费累计成长值：实付¥" + amount.toPlainString());
+        gr.setCreateTime(LocalDateTime.now());
+        growthRecordMapper.insert(gr);
+
+        log.info("Member consume accumulated: userId={}, amount={}, pointsGain={}, growthGain={}, levelUp={}",
+                userId, amount.toPlainString(), pointsGain, growthGain, upgraded != null);
+    }
+
+    /**
+     * 阶梯自动升级：从当前等级的下一个启用等级起，成长值达到门槛即升，直到最高可达成等级。
+     * 返回升级后的等级（未升级返回 null）。
+     */
+    private MemberLevel tryUpgrade(Long currentLevelId, int growthValue) {
+        MemberLevel current = currentLevelId == null ? null : memberLevelMapper.selectById(currentLevelId);
+        int currentSort = (current == null || current.getSort() == null) ? 0 : current.getSort();
+        // 按 sort 升序取所有启用等级，找第一个门槛 > 当前成长值的等级的前一个
+        List<MemberLevel> enabled = memberLevelMapper.selectList(new LambdaQueryWrapper<MemberLevel>()
+                .eq(MemberLevel::getStatus, 1).orderByAsc(MemberLevel::getSort));
+        MemberLevel best = null;
+        for (MemberLevel lv : enabled) {
+            int sort = lv.getSort() == null ? 0 : lv.getSort();
+            if (sort <= currentSort) {
+                continue; // 不低于当前等级
+            }
+            int threshold = lv.getGrowthThreshold() == null ? 0 : lv.getGrowthThreshold();
+            if (growthValue >= threshold) {
+                best = lv;
+            }
+        }
+        return best;
     }
     // ==================== helpers ====================
 

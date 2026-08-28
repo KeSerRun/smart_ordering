@@ -1,5 +1,6 @@
 package com.smartordering.modules.payment.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.smartordering.common.exception.BusinessException;
@@ -11,6 +12,7 @@ import com.smartordering.modules.payment.entity.PaymentRecord;
 import com.smartordering.modules.payment.mapper.PaymentRecordMapper;
 import com.smartordering.modules.payment.service.PaymentService;
 import com.smartordering.modules.payment.vo.PaymentVO;
+import com.smartordering.modules.member.service.MemberService;
 import com.smartordering.modules.table.service.DiningTableService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +44,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentRecordMapper paymentRecordMapper;
     private final OrderMapper orderMapper;
     private final DiningTableService diningTableService;
+    private final MemberService memberService;
 
     @Override
     @Transactional
@@ -96,7 +99,17 @@ public class PaymentServiceImpl implements PaymentService {
             }
         }
 
-        // 6. Build response
+        // 6. 会员消费累计：积分 + 成长值 + 自动升级（仅小程序会员用户）
+        if (StpUtil.isLogin()) {
+            Long buyerId = StpUtil.getLoginIdAsLong();
+            try {
+                memberService.accumulateConsume(buyerId, actualAmount, order.getId());
+            } catch (Exception e) {
+                // 会员累计失败不影响收银成功，仅记录
+                log.warn("Member accumulate skipped after payment: {}", e.getMessage());
+            }
+        }
+        // 7. Build response
         PaymentVO vo = new PaymentVO();
         vo.setId(record.getId());
         vo.setOrderId(order.getId());

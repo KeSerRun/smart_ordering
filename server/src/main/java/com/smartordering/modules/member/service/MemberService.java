@@ -18,6 +18,7 @@ import com.smartordering.modules.member.vo.MemberOverviewVO;
 import com.smartordering.modules.member.vo.MemberPointsRecordVO;
 import com.smartordering.modules.member.vo.MemberProfileVO;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -59,4 +60,7 @@ public interface MemberService {
 
     /** 指定用户设置会员等级：更新 member_profile.level_id */
     void assignLevel(Long userId, MemberLevelAssignDTO dto);
+
+    /** 消费累计（结账成功后调用）：积分 = 实付×等级倍率，成长值 = 实付(1:1)，写流水并自动升级 */
+    void accumulateConsume(Long userId, BigDecimal amount, Long orderId);
 }
