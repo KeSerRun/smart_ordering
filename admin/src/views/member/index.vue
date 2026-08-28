@@ -63,7 +63,7 @@
 
 <script setup>
 import { h, ref, computed, onMounted } from 'vue'
-import { useMessage, NSpace } from 'naive-ui'
+import { useMessage, NSpace, NButton } from 'naive-ui'
 import { listMembers, memberLevels, createMemberLevel, updateMemberLevel, updateMemberLevelStatus, listMemberPoints, adjustMemberPoints, assignMemberLevel } from '@/api/member'
 
 const message = useMessage()
