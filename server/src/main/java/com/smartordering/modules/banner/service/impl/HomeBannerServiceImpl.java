@@ -12,6 +12,7 @@ import com.smartordering.modules.banner.mapper.HomeBannerMapper;
 import com.smartordering.modules.banner.service.HomeBannerService;
 import com.smartordering.modules.banner.vo.HomeBannerVO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -24,6 +25,7 @@ import java.util.stream.Collectors;
  *
  * @author smartordering
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HomeBannerServiceImpl implements HomeBannerService {
@@ -84,16 +86,26 @@ public class HomeBannerServiceImpl implements HomeBannerService {
     }
 
     @Override
-    public void updateStatus(Long id, Integer status) {
-        HomeBanner banner = homeBannerMapper.selectById(id);
-        if (banner == null) {
-            throw new BusinessException("Banner not found");
+        public void updateStatus(Long id, Integer status) {
+            HomeBanner banner = homeBannerMapper.selectById(id);
+            if (banner == null) {
+                throw new BusinessException("Banner not found");
+            }
+            HomeBanner update = new HomeBanner();
+            update.setId(id);
+            update.setStatus(status);
+            homeBannerMapper.updateById(update);
         }
-        HomeBanner update = new HomeBanner();
-        update.setId(id);
-        update.setStatus(status);
-        homeBannerMapper.updateById(update);
-    }
+
+        @Override
+        public void delete(Long id) {
+            HomeBanner banner = homeBannerMapper.selectById(id);
+            if (banner == null) {
+                throw new BusinessException("Banner not found");
+            }
+            homeBannerMapper.deleteById(id);
+            log.info("Home banner deleted: id={}, title={}", id, banner.getTitle());
+        }
 
     private HomeBannerVO toVO(HomeBanner banner) {
         HomeBannerVO vo = new HomeBannerVO();

@@ -9,6 +9,7 @@ import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 /**
  * Dish spec option entity (a selectable value inside a spec group).
@@ -34,6 +35,9 @@ public class DishSpecOption implements Serializable {
 
     /** Sort order */
     private Integer sort;
+
+    /** Price delta applied when this option is selected (positive = extra charge, negative = discount) */
+    private BigDecimal price;
 
     /** Logical delete: 0=normal, 1=deleted */
     @TableLogic

@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -139,6 +140,7 @@ public class DishSpecGroupServiceImpl implements DishSpecGroupService {
             option.setGroupId(groupId);
             option.setName(optionDTO.getName());
             option.setSort(optionDTO.getSort() == null ? 0 : optionDTO.getSort());
+            option.setPrice(optionDTO.getPrice() == null ? BigDecimal.ZERO : optionDTO.getPrice());
             specOptionMapper.insert(option);
         }
     }

@@ -1,7 +1,7 @@
 package com.smartordering.modules.mq.controller;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.smartordering.common.result.ApiResponse;
+import com.smartordering.common.result.PageVO;
 import com.smartordering.modules.mq.dto.MqMessageQueryDTO;
 import com.smartordering.modules.mq.service.ReliableMessageService;
 import com.smartordering.modules.mq.vo.MqMessageVO;
@@ -24,10 +24,10 @@ public class AdminMqMessageController {
     private final ReliableMessageService reliableMessageService;
 
     @Operation(summary = "Page messages")
-    @GetMapping("/page")
-    public ApiResponse<IPage<MqMessageVO>> page(MqMessageQueryDTO dto) {
-        return ApiResponse.ok(reliableMessageService.pageMessages(dto));
-    }
+        @GetMapping("/page")
+        public ApiResponse<PageVO<MqMessageVO>> page(MqMessageQueryDTO dto) {
+            return ApiResponse.ok(PageVO.of(reliableMessageService.pageMessages(dto)));
+        }
 
     @Operation(summary = "Retry message")
     @PostMapping("/{id}/retry")

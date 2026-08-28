@@ -5,11 +5,12 @@ import lombok.Data;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
- * 用户列表 VO
+ * 管理端用户列表 VO
  *
-
+ * @author smartordering
  */
 @Data
 public class UserVO implements Serializable {
@@ -61,6 +62,11 @@ public class UserVO implements Serializable {
      * 用户类型
      */
     private String userType;
+
+    /**
+     * 模块权限编码列表：core/ops/sys/kitchen
+     */
+    private List<String> modules;
 
     /**
      * 创建时间

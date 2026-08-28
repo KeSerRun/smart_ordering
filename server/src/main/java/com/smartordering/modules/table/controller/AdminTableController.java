@@ -96,6 +96,13 @@ public class AdminTableController {
         diningTableService.downloadQrCode(id, response);
     }
 
+    @Operation(summary = "Delete table QR code (state -> false)")
+    @DeleteMapping("/{id}/qrcode")
+    public Result<Void> deleteQrCode(@PathVariable Long id) {
+        diningTableService.deleteTableQrCode(id);
+        return Result.success();
+    }
+
     @Operation(summary = "Generate all table QR codes")
     @PostMapping("/qrcode/generate-all")
     public Result<Integer> generateAllQrCodes() {

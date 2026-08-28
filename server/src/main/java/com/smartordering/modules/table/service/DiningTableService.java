@@ -39,9 +39,15 @@ public interface DiningTableService {
 
     void downloadQrCode(Long id, HttpServletResponse response);
 
+    /** 删除桌台二维码：移除 MinIO 对象并清空 qrCodeUrl（未生成时抛出业务异常） */
+    void deleteTableQrCode(Long id);
+
     int generateAllQrCodes();
 
     QrCodeTaskVO submitGenerateAllQrCodesTask();
+
+    /** 消费者异步执行完毕后回写任务状态（SUCCESS / FAILED） */
+    void completeGenerateAllQrTask(String taskId, Integer total, Integer completed, String error);
 
     QrCodeTaskVO submitDownloadAllQrCodesTask();
 

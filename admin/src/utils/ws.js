@@ -1,5 +1,6 @@
 import { Client } from '@stomp/stompjs'
 import SockJS from 'sockjs-client'
+import { stringifyIds } from '@/api/request'
 
 /**
  * 创建 STOMP WebSocket 客户端
@@ -28,7 +29,8 @@ export function createStompClient({ onMessage, onConnected } = {}) {
     console.info('[ws] connected, subscribing /topic/kitchen')
     client.subscribe('/topic/kitchen', (frame) => {
       try {
-        const body = JSON.parse(frame.body)
+        // WS 消息不经 axios，同样要处理雪花 ID 精度
+        const body = stringifyIds(JSON.parse(frame.body))
         onMessage && onMessage(body)
       } catch (e) {
         console.error('[ws] invalid message payload', frame.body, e)

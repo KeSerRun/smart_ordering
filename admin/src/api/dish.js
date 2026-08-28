@@ -18,3 +18,10 @@ export const dishDetail = (id) => request.get(`/admin/dish/${id}`)
 export const createDish = (d) => request.post('/admin/dish', d)
 export const updateDish = (id, d) => request.put(`/admin/dish/${id}`, d)
 export const updateDishStatus = (id, status) => request.put(`/admin/dish/${id}/status`, null, { params: { status } })
+
+// 图片上传（MinIO，返回 { url, objectName }）
+export const uploadImage = (file, type = 'dish') => {
+  const fd = new FormData()
+  fd.append('file', file)
+  return request.post(`/admin/file/upload/${type}-image`, fd)
+}

@@ -177,8 +177,7 @@ public class DishCategoryServiceImpl implements DishCategoryService {
     }
 
     private void deleteBindings(Long categoryId) {
-        LambdaQueryWrapper<DishCategorySpec> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(DishCategorySpec::getCategoryId, categoryId);
-        categorySpecMapper.delete(wrapper);
-    }
+            // 物理删除：逻辑删除会让已删行继续占用 uk_category_spec 唯一键，导致重建绑定时 DuplicateKey
+            categorySpecMapper.hardDeleteByCategoryId(categoryId);
+        }
 }

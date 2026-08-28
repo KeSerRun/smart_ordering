@@ -2,14 +2,18 @@ package com.smartordering.modules.system.service;
 
 import com.smartordering.common.result.PageResult;
 import com.smartordering.modules.system.dto.AdminResetPasswordDTO;
+import com.smartordering.modules.system.dto.AdminUserUpdateDTO;
 import com.smartordering.modules.system.dto.LoginDTO;
 import com.smartordering.modules.system.dto.PasswordUpdateDTO;
 import com.smartordering.modules.system.dto.RegisterDTO;
+import com.smartordering.modules.system.dto.UserCreateDTO;
 import com.smartordering.modules.system.dto.UserQueryDTO;
 import com.smartordering.modules.system.dto.UserUpdateDTO;
 import com.smartordering.modules.system.vo.LoginVO;
 import com.smartordering.modules.system.vo.UserInfoVO;
 import com.smartordering.modules.system.vo.UserVO;
+
+import java.util.List;
 
 /**
  * User service interface.
@@ -38,4 +42,16 @@ public interface SysUserService {
 
     /** Admin: enable/disable a user (cannot disable self) */
     void updateStatus(Long userId, Integer status);
+
+    /** Admin: create user (BCrypt password + module grants) */
+    Long createUser(UserCreateDTO dto);
+
+    /** Admin: update user profile + module grants */
+    void updateUser(AdminUserUpdateDTO dto);
+
+    /** Admin: delete user (logic delete; admin / self protected) */
+    void deleteUser(Long userId);
+
+    /** Admin: replace a user's module grants (core/ops/sys/kitchen) */
+    void updateUserModules(Long userId, List<String> modules);
 }

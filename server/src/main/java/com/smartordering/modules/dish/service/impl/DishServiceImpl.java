@@ -13,11 +13,14 @@ import com.smartordering.modules.dish.dto.DishCreateDTO;
 import com.smartordering.modules.dish.dto.DishSpecItemDTO;
 import com.smartordering.modules.dish.entity.Dish;
 import com.smartordering.modules.dish.entity.DishCategory;
+import com.smartordering.modules.dish.entity.DishSpecOption;
 import com.smartordering.modules.dish.mapper.DishCategoryMapper;
 import com.smartordering.modules.dish.mapper.DishMapper;
+import com.smartordering.modules.dish.mapper.DishSpecOptionMapper;
 import com.smartordering.modules.dish.service.DishService;
 import com.smartordering.modules.dish.vo.AdminDishVO;
 import com.smartordering.modules.dish.vo.DishSpecItemVO;
+import com.smartordering.modules.dish.vo.DishSpecOptionVO;
 import com.smartordering.modules.dish.vo.DishVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
@@ -25,9 +28,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +48,7 @@ public class DishServiceImpl implements DishService {
 
     private final DishMapper dishMapper;
     private final DishCategoryMapper dishCategoryMapper;
+    private final DishSpecOptionMapper dishSpecOptionMapper;
     private final ObjectMapper objectMapper;
     private final MinioConfig minioConfig;
 
@@ -160,9 +168,9 @@ public class DishServiceImpl implements DishService {
         if (dto.getPreparationTime() != null) {
             dish.setPreparationTime(dto.getPreparationTime());
         }
-        if (dto.getSpecItems() != null && !dto.getSpecItems().isEmpty()) {
-            dish.setSpecValues(serializeSpecItems(dto.getSpecItems()));
-        }
+        if (dto.getSpecItems() != null) {
+                    dish.setSpecValues(serializeSpecItems(dto.getSpecItems()));
+                }
         dishMapper.updateById(dish);
     }
 
@@ -212,6 +220,8 @@ public class DishServiceImpl implements DishService {
         BeanUtils.copyProperties(dish, vo);
         vo.setImage(resolveImageUrl(dish.getImage()));
         vo.setThumbnail(resolveImageUrl(dish.getThumbnail()));
+        // 顾客端：给规格快照里的选项补上规格库的实时价格（加价/减价），供点餐界面展示
+        vo.setSpecItems(populateSpecOptionPrices(deserializeSpecItems(dish.getSpecValues())));
         return vo;
     }
 
@@ -252,5 +262,50 @@ public class DishServiceImpl implements DishService {
         } catch (Exception e) {
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * 用规格库（dish_spec_option）给规格快照的每个选项补充名称与价格。
+     * <p>快照只存 optionIds/optionNames；价格以规格库实时为准（选项已被删除的则跳过，不出现在顾客端）。</p>
+     */
+    private List<DishSpecItemVO> populateSpecOptionPrices(List<DishSpecItemVO> items) {
+        if (items == null || items.isEmpty()) {
+            return items;
+        }
+        Set<Long> allOptionIds = new HashSet<>();
+        for (DishSpecItemVO item : items) {
+            if (item.getOptionIds() != null) {
+                allOptionIds.addAll(item.getOptionIds());
+            }
+        }
+        if (allOptionIds.isEmpty()) {
+            return items;
+        }
+        Map<Long, DishSpecOption> optionsById = new HashMap<>();
+        for (DishSpecOption option : dishSpecOptionMapper.selectBatchIds(allOptionIds)) {
+            optionsById.put(option.getId(), option);
+        }
+        for (DishSpecItemVO item : items) {
+            if (item.getOptionIds() == null) {
+                continue;
+            }
+            List<DishSpecOptionVO> options = new ArrayList<>();
+            for (Long optionId : item.getOptionIds()) {
+                DishSpecOption option = optionsById.get(optionId);
+                if (option == null) {
+                    continue;
+                }
+                DishSpecOptionVO optionVO = new DishSpecOptionVO();
+                optionVO.setId(option.getId());
+                optionVO.setName(option.getName());
+                optionVO.setSort(option.getSort());
+                optionVO.setPrice(option.getPrice());
+                options.add(optionVO);
+            }
+            if (!options.isEmpty()) {
+                item.setOptions(options);
+            }
+        }
+        return items;
     }
 }

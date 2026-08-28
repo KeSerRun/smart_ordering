@@ -50,6 +50,8 @@ smart:
     topic-exchange: smart.event.topic         # 业务事件 topic 交换机
     kitchen-queue: kitchen.order.queue        # 后厨订单队列
     order-routing-key: order.created          # 新订单路由键
+    table-qrcode-queue: table.qrcode.queue    # 桌台二维码批量生成队列
+    table-qrcode-routing-key: table.qrcode.generate  # 桌台二维码批量生成路由键
     resend-interval-ms: 15000                 # 可靠消息补偿重发扫描间隔
     max-retry-count: 5                        # 投递最大重试次数，超过标记失败
 

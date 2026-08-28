@@ -24,4 +24,7 @@ public interface HomeBannerService {
     void update(HomeBannerUpdateDTO dto);
 
     void updateStatus(Long id, Integer status);
-}
+
+        /** 删除轮播图（逻辑删除） */
+        void delete(Long id);
+    }

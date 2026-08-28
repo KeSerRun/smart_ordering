@@ -13,9 +13,12 @@ import java.util.List;
 public class UserInfoVO {
 
     private Long id;
-    private String username;
-    private String nickname;
-    private String avatar;
-    private List<String> roles;
-    private List<String> permissions;
-}
+        private String username;
+        private String nickname;
+        private String avatar;
+        private List<String> roles;
+        private List<String> permissions;
+
+        /** 模块权限编码列表：core/ops/sys/kitchen（侧边栏菜单按此过滤） */
+        private List<String> modules;
+    }

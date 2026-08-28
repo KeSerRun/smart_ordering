@@ -18,3 +18,8 @@ export const releaseTable = (id) => request.put(`/admin/table/${id}/release`)
 export const genAllQrTask = () => request.post('/admin/table/qrcode/generate-all/task')
 export const getQrTask = (taskId) => request.get(`/admin/table/qrcode/task/${taskId}`)
 export const downloadTableQr = (id) => request.get(`/admin/table/${id}/qrcode/download`, { responseType: 'blob' })
+export const deleteTableQr = (id) => request.delete(`/admin/table/${id}/qrcode`)
+
+// 打包下载全部二维码
+export const genDownloadAllQrTask = () => request.post('/admin/table/qrcode/download-all/task')
+export const downloadQrTaskFile = (taskId) => request.get(`/admin/table/qrcode/task/${taskId}/download`, { responseType: 'blob' })

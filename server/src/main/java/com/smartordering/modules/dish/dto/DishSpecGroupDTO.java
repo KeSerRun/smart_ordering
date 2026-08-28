@@ -2,6 +2,7 @@ package com.smartordering.modules.dish.dto;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -29,5 +30,7 @@ public class DishSpecGroupDTO {
         private Long id;
         private String name;
         private Integer sort;
+        /** Price delta when selected (positive extra charge / negative discount / zero none) */
+        private BigDecimal price;
     }
 }

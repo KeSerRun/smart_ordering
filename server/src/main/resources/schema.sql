@@ -476,40 +476,6 @@ CREATE TABLE IF NOT EXISTS member_growth_record (
     KEY idx_member_growth_record_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='会员成长值流水表';
 
-
--- 打印机表
-CREATE TABLE IF NOT EXISTS printer (
-    id          BIGINT NOT NULL COMMENT '打印机ID',
-    name        VARCHAR(50) NOT NULL COMMENT '打印机名称',
-    sn          VARCHAR(100) NOT NULL COMMENT '打印机序列号',
-    type        TINYINT NOT NULL DEFAULT 0 COMMENT '类型：0前台 1后厨',
-    status      TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0离线 1在线',
-    location    VARCHAR(100) COMMENT '位置描述',
-    create_by   BIGINT COMMENT '创建人',
-    update_by   BIGINT COMMENT '更新人',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted     TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_printer_sn (sn)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打印机表';
-
--- 打印机-分类映射表
-CREATE TABLE IF NOT EXISTS printer_category_mapping (
-    id          BIGINT NOT NULL COMMENT '映射ID',
-    printer_id  BIGINT NOT NULL COMMENT '打印机ID',
-    category_id BIGINT NOT NULL COMMENT '菜品分类ID',
-    create_by   BIGINT COMMENT '创建人',
-    update_by   BIGINT COMMENT '更新人',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-    deleted     TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-    PRIMARY KEY (id),
-    UNIQUE KEY uk_printer_category_mapping_category (printer_id, category_id),
-    KEY idx_printer_category_mapping_category_id (category_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='打印机-分类映射表';
-
-
 -- 订单操作日志表（审计日志）
 CREATE TABLE IF NOT EXISTS order_operation_log (
     id             BIGINT NOT NULL COMMENT '日志ID',
@@ -581,129 +547,103 @@ CREATE TABLE IF NOT EXISTS mq_consume_log (
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='MQ消费日志表';
 
 
-    -- 菜品规格组表（管理端：小份/大份/辣度等规格组）
-    CREATE TABLE IF NOT EXISTS dish_spec_group (
-        id          BIGINT NOT NULL COMMENT '规格组ID',
-        name        VARCHAR(50) NOT NULL COMMENT '规格组名称',
-        sort        INT NOT NULL DEFAULT 0 COMMENT '排序',
-        status      INT NOT NULL DEFAULT 1 COMMENT '状态：1启用 0禁用',
-        create_by   BIGINT COMMENT '创建人',
-        update_by   BIGINT COMMENT '更新人',
-        create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-        deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-        PRIMARY KEY (id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜品规格组表';
+-- 菜品规格组表（管理端：小份/大份/辣度等规格组）
+CREATE TABLE IF NOT EXISTS dish_spec_group (
+    id          BIGINT NOT NULL COMMENT '规格组ID',
+    name        VARCHAR(50) NOT NULL COMMENT '规格组名称',
+    sort        INT NOT NULL DEFAULT 0 COMMENT '排序',
+    status      INT NOT NULL DEFAULT 1 COMMENT '状态：1启用 0禁用',
+    create_by   BIGINT COMMENT '创建人',
+    update_by   BIGINT COMMENT '更新人',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜品规格组表';
 
-    -- 规格值表（规格组下的选项：小份/大份、微辣/重辣等）
-    CREATE TABLE IF NOT EXISTS dish_spec_option (
-        id          BIGINT NOT NULL COMMENT '规格值ID',
-        group_id    BIGINT NOT NULL COMMENT '规格组ID',
-        name        VARCHAR(50) NOT NULL COMMENT '规格值名称',
-        sort        INT NOT NULL DEFAULT 0 COMMENT '排序',
-        deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-        PRIMARY KEY (id),
-        KEY idx_spec_option_group (group_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜品规格值表';
+-- 规格值表（规格组下的选项：小份/大份、微辣/重辣等，price 为加价/减价金额）
+CREATE TABLE IF NOT EXISTS dish_spec_option (
+    id          BIGINT NOT NULL COMMENT '规格值ID',
+    group_id    BIGINT NOT NULL COMMENT '规格组ID',
+    name        VARCHAR(50) NOT NULL COMMENT '规格值名称',
+    sort        INT NOT NULL DEFAULT 0 COMMENT '排序',
+    price       DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT '加价金额（正为加价，负为减价，0 不加价）',
+    deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (id),
+    KEY idx_spec_option_group (group_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜品规格值表';
 
-    -- 分类-规格组关联表（一个分类可绑定多个规格组）
-        CREATE TABLE IF NOT EXISTS dish_category_spec (
-            id            BIGINT NOT NULL COMMENT 'ID',
-            category_id   BIGINT NOT NULL COMMENT '分类ID',
-            spec_group_id BIGINT NOT NULL COMMENT '规格组ID',
-            create_by     BIGINT COMMENT '创建人',
-            update_by     BIGINT COMMENT '更新人',
-            create_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-            update_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-            deleted       INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-            PRIMARY KEY (id),
-            UNIQUE KEY uk_category_spec (category_id, spec_group_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分类规格组关联表';
+-- 分类-规格组关联表（一个分类可绑定多个规格组）
+CREATE TABLE IF NOT EXISTS dish_category_spec (
+    id            BIGINT NOT NULL COMMENT 'ID',
+    category_id   BIGINT NOT NULL COMMENT '分类ID',
+    spec_group_id BIGINT NOT NULL COMMENT '规格组ID',
+    create_by     BIGINT COMMENT '创建人',
+    update_by     BIGINT COMMENT '更新人',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted       INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_category_spec (category_id, spec_group_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='分类规格组关联表';
 
 
-    -- 系统配置表
-    CREATE TABLE IF NOT EXISTS sys_config (
-        id           BIGINT NOT NULL COMMENT '配置ID',
-        name         VARCHAR(100) COMMENT '配置名称',
-        config_key   VARCHAR(100) NOT NULL COMMENT '配置键',
-        config_value TEXT COMMENT '配置值',
-        remark       VARCHAR(500) COMMENT '备注',
-        create_by    BIGINT COMMENT '创建人',
-        update_by    BIGINT COMMENT '更新人',
-        create_time  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        update_time  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-        deleted      INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-        PRIMARY KEY (id),
-        UNIQUE KEY uk_config_key (config_key)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表';
-
-    -- 系统字典类型表
-    CREATE TABLE IF NOT EXISTS sys_dict_type (
-        id          BIGINT NOT NULL COMMENT '字典类型ID',
-        name        VARCHAR(100) NOT NULL COMMENT '字典名称',
-        code        VARCHAR(100) NOT NULL COMMENT '字典编码',
-        status      INT NOT NULL DEFAULT 1 COMMENT '状态：1启用 0禁用',
-        remark      VARCHAR(500) COMMENT '备注',
-        create_by   BIGINT COMMENT '创建人',
-        update_by   BIGINT COMMENT '更新人',
-        create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-        deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-        PRIMARY KEY (id),
-        UNIQUE KEY uk_dict_type_code (code)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统字典类型表';
-
-    -- 系统字典数据表
-    CREATE TABLE IF NOT EXISTS sys_dict_data (
-        id          BIGINT NOT NULL COMMENT '字典数据ID',
-        type_id     BIGINT NOT NULL COMMENT '字典类型ID',
-        label       VARCHAR(100) NOT NULL COMMENT '字典标签',
-        value       VARCHAR(100) NOT NULL COMMENT '字典值',
-        order_num   INT NOT NULL DEFAULT 0 COMMENT '排序',
-        status      INT NOT NULL DEFAULT 1 COMMENT '状态：1启用 0禁用',
-        remark      VARCHAR(500) COMMENT '备注',
-        create_by   BIGINT COMMENT '创建人',
-        update_by   BIGINT COMMENT '更新人',
-        create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        update_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
-        deleted     INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
-        PRIMARY KEY (id),
-        KEY idx_dict_data_type (type_id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统字典数据表';
+-- 系统配置表
+CREATE TABLE IF NOT EXISTS sys_config (
+    id           BIGINT NOT NULL COMMENT '配置ID',
+    name         VARCHAR(100) COMMENT '配置名称',
+    config_key   VARCHAR(100) NOT NULL COMMENT '配置键',
+    config_value TEXT COMMENT '配置值',
+    remark       VARCHAR(500) COMMENT '备注',
+    create_by    BIGINT COMMENT '创建人',
+    update_by    BIGINT COMMENT '更新人',
+    create_time  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted      INT NOT NULL DEFAULT 0 COMMENT '逻辑删除：0未删 1已删',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_config_key (config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统配置表';
 
     -- 登录日志表
-    CREATE TABLE IF NOT EXISTS sys_login_log (
-        id          BIGINT NOT NULL COMMENT '日志ID',
-        username    VARCHAR(100) COMMENT '用户名',
-        ip          VARCHAR(50) COMMENT 'IP',
-        location    VARCHAR(100) COMMENT '地点',
-        browser     VARCHAR(100) COMMENT '浏览器',
-        os          VARCHAR(100) COMMENT '操作系统',
-        status      INT NOT NULL DEFAULT 0 COMMENT '状态：1成功 0失败',
-        message     VARCHAR(500) COMMENT '消息',
-        login_time  DATETIME COMMENT '登录时间',
-        create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        PRIMARY KEY (id),
-        KEY idx_login_log_username (username)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='登录日志表';
+CREATE TABLE IF NOT EXISTS sys_login_log (
+    id          BIGINT NOT NULL COMMENT '日志ID',
+    username    VARCHAR(100) COMMENT '用户名',
+    ip          VARCHAR(50) COMMENT 'IP',
+    location    VARCHAR(100) COMMENT '地点',
+    browser     VARCHAR(100) COMMENT '浏览器',
+    os          VARCHAR(100) COMMENT '操作系统',
+    status      INT NOT NULL DEFAULT 0 COMMENT '状态：1成功 0失败',
+    message     VARCHAR(500) COMMENT '消息',
+    login_time  DATETIME COMMENT '登录时间',
+            PRIMARY KEY (id),
+            KEY idx_login_log_username (username)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='登录日志表';
 
-    -- 操作日志表
-    CREATE TABLE IF NOT EXISTS sys_operation_log (
-        id              BIGINT NOT NULL COMMENT '日志ID',
-        module          VARCHAR(100) COMMENT '模块',
-        operation       VARCHAR(100) COMMENT '操作',
-        method          VARCHAR(200) COMMENT '方法',
-        request_url     VARCHAR(500) COMMENT '请求URL',
-        request_method  VARCHAR(20) COMMENT '请求方式',
-        request_params  TEXT COMMENT '请求参数',
-        response_result TEXT COMMENT '响应结果',
-        user_id         BIGINT COMMENT '用户ID',
-        username        VARCHAR(100) COMMENT '用户名',
-        ip              VARCHAR(50) COMMENT 'IP',
-        duration        BIGINT COMMENT '耗时(毫秒)',
-        status          INT COMMENT '状态：1成功 0失败',
-        error_msg       TEXT COMMENT '错误信息',
-        create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        PRIMARY KEY (id),
-        KEY idx_operation_log_username (username)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+-- 操作日志表
+CREATE TABLE IF NOT EXISTS sys_operation_log (
+    id              BIGINT NOT NULL COMMENT '日志ID',
+    module          VARCHAR(100) COMMENT '模块',
+    operation       VARCHAR(100) COMMENT '操作',
+    method          VARCHAR(200) COMMENT '方法',
+    request_url     VARCHAR(500) COMMENT '请求URL',
+    request_method  VARCHAR(20) COMMENT '请求方式',
+    request_params  TEXT COMMENT '请求参数',
+    response_result TEXT COMMENT '响应结果',
+    user_id         BIGINT COMMENT '用户ID',
+    username        VARCHAR(100) COMMENT '用户名',
+    ip              VARCHAR(50) COMMENT 'IP',
+    duration        BIGINT COMMENT '耗时(毫秒)',
+    status          INT COMMENT '状态：1成功 0失败',
+    error_msg       TEXT COMMENT '错误信息',
+    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    KEY idx_operation_log_username (username)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='操作日志表';
+
+-- 用户-模块权限关联表（模块编码：core 点餐核心 / ops 运营管理 / sys 系统管理 / kitchen 后厨任务）
+CREATE TABLE IF NOT EXISTS sys_user_module (
+    user_id     BIGINT NOT NULL COMMENT '用户ID',
+    module_code VARCHAR(20) NOT NULL COMMENT '模块编码：core/ops/sys/kitchen',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (user_id, module_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户模块权限表';

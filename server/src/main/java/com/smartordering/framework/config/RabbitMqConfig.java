@@ -30,13 +30,23 @@ public class RabbitMqConfig {
     /** 新订单路由键 */
     private final String orderRoutingKey;
 
+    /** 桌台二维码批量生成队列 */
+    private final String tableQrCodeQueue;
+
+    /** 桌台二维码批量生成路由键 */
+    private final String tableQrCodeRoutingKey;
+
     public RabbitMqConfig(
             @Value("${smart.mq.topic-exchange:smart.event.topic}") String topicExchange,
             @Value("${smart.mq.kitchen-queue:kitchen.order.queue}") String kitchenQueue,
-            @Value("${smart.mq.order-routing-key:order.created}") String orderRoutingKey) {
+            @Value("${smart.mq.order-routing-key:order.created}") String orderRoutingKey,
+            @Value("${smart.mq.table-qrcode-queue:table.qrcode.queue}") String tableQrCodeQueue,
+            @Value("${smart.mq.table-qrcode-routing-key:table.qrcode.generate}") String tableQrCodeRoutingKey) {
         this.topicExchange = topicExchange;
         this.kitchenQueue = kitchenQueue;
         this.orderRoutingKey = orderRoutingKey;
+        this.tableQrCodeQueue = tableQrCodeQueue;
+        this.tableQrCodeRoutingKey = tableQrCodeRoutingKey;
     }
 
     public String getTopicExchange() {
@@ -49,6 +59,14 @@ public class RabbitMqConfig {
 
     public String getOrderRoutingKey() {
         return orderRoutingKey;
+    }
+
+    public String getTableQrCodeQueue() {
+        return tableQrCodeQueue;
+    }
+
+    public String getTableQrCodeRoutingKey() {
+        return tableQrCodeRoutingKey;
     }
 
     /** 业务事件 topic 交换机（durable） */
@@ -69,5 +87,19 @@ public class RabbitMqConfig {
         return BindingBuilder.bind(kitchenOrderQueue)
                 .to(orderTopicExchange)
                 .with(orderRoutingKey);
+    }
+
+    /** 桌台二维码批量生成队列（durable） */
+    @Bean
+    public Queue tableQrCodeQueue() {
+        return new Queue(tableQrCodeQueue, true);
+    }
+
+    /** 将 table.qrcode.generate 路由到桌台二维码队列 */
+    @Bean
+    public Binding tableQrCodeBinding(TopicExchange orderTopicExchange, Queue tableQrCodeQueue) {
+        return BindingBuilder.bind(tableQrCodeQueue)
+                .to(orderTopicExchange)
+                .with(tableQrCodeRoutingKey);
     }
 }

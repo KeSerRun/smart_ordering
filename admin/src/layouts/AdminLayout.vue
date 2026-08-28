@@ -44,17 +44,23 @@ const userInfo = computed(() => user.userInfo)
 const active = computed(() => route.name)
 const title = computed(() => route.meta.title || '')
 
-const menuOptions = [
-  {
-    type: 'group', label: '点餐核心', key: 'core', children: [
+// 模块分组定义：key 与后端 sys_user_module.module_code 一致
+// kitchen（后厨）已从「点餐核心」拆出，独立成「后厨任务」模块
+const MODULE_GROUPS = {
+  core: {
+    label: '点餐核心', key: 'core', children: [
       { label: '菜品管理', key: 'dish' },
       { label: '桌台管理', key: 'table' },
-      { label: '订单管理', key: 'order' },
+      { label: '订单管理', key: 'order' }
+    ]
+  },
+  kitchen: {
+    label: '后厨任务', key: 'kitchen', children: [
       { label: '后厨', key: 'kitchen' }
     ]
   },
-  {
-    type: 'group', label: '运营管理', key: 'ops', children: [
+  ops: {
+    label: '运营管理', key: 'ops', children: [
       { label: '会员管理', key: 'member' },
       { label: '优惠券', key: 'coupon' },
       { label: '支付管理', key: 'payment' },
@@ -63,18 +69,25 @@ const menuOptions = [
       { label: '首页轮播', key: 'banner' }
     ]
   },
-  {
-    type: 'group', label: '系统管理', key: 'sys', children: [
+  sys: {
+    label: '系统管理', key: 'sys', children: [
       { label: '用户管理', key: 'system-user' },
       { label: '角色管理', key: 'system-role' },
-      { label: '菜单管理', key: 'system-menu' },
-      { label: '字典管理', key: 'system-dict' },
-      { label: '系统配置', key: 'system-config' },
       { label: '登录日志', key: 'system-login-log' },
-      { label: '操作日志', key: 'system-operation-log' }
+      { label: '操作日志', key: 'system-operation-log' },
+      { label: 'MQ 消息', key: 'mq' }
     ]
   }
-]
+}
+
+// 按用户模块权限过滤菜单；旧登录态（无 modules 字段）默认显示全部，兼容
+const menuOptions = computed(() => {
+  const granted = userInfo.value?.modules
+  const hasGrant = Array.isArray(granted) && granted.length > 0
+  return Object.values(MODULE_GROUPS)
+    .filter((g) => !hasGrant || granted.includes(g.key))
+    .map((g) => ({ type: 'group', label: g.label, key: g.key, children: g.children }))
+})
 
 function handleMenu(key) {
   router.push({ name: key })

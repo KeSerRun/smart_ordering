@@ -19,4 +19,7 @@ public class DishSpecItemVO {
     private List<Long> optionIds;
 
     private List<String> optionNames;
+
+    /** Enriched option details with price delta (populated on the app side from the spec library) */
+    private List<DishSpecOptionVO> options;
 }

@@ -1,12 +1,16 @@
 package com.smartordering.modules.table.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import cn.hutool.extra.qrcode.QrCodeUtil;
 import com.smartordering.common.enums.WsEventType;
 import com.smartordering.common.exception.BusinessException;
 import com.smartordering.framework.config.MinioConfig;
+import com.smartordering.framework.config.RabbitMqConfig;
 import com.smartordering.framework.websocket.WsService;
+import com.smartordering.modules.mq.service.ReliableMessageService;
 import com.smartordering.modules.table.dto.TableCreateDTO;
+import com.smartordering.modules.table.dto.TableQrCodeEvent;
 import com.smartordering.modules.table.dto.TableUpdateDTO;
 import com.smartordering.modules.table.entity.DiningTable;
 import com.smartordering.modules.table.mapper.DiningTableMapper;
@@ -18,6 +22,7 @@ import io.minio.GetObjectArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
+import io.minio.RemoveObjectArgs;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +57,8 @@ public class DiningTableServiceImpl implements DiningTableService {
         private final MinioClient minioClient;
         private final MinioConfig minioConfig;
         private final WsService wsService;
+        private final ReliableMessageService reliableMessageService;
+        private final RabbitMqConfig rabbitMqConfig;
 
     /** In-memory QR task metadata (taskId -> task). */
     private static final Map<String, QrCodeTaskVO> QR_TASKS = new ConcurrentHashMap<>();
@@ -165,12 +172,7 @@ public class DiningTableServiceImpl implements DiningTableService {
         if (table == null) {
             throw new BusinessException("Table not found");
         }
-        byte[] png;
-        if (StringUtils.hasText(table.getQrCodeUrl())) {
-            png = resolveQrCodeBytes(table.getQrCodeUrl());
-        } else {
-            png = ensureTableQrCode(table);
-        }
+        byte[] png = resolveOrRegenerate(table);
 
         String rawFileName = String.format("%s-%s-qrcode.png", table.getCode(), table.getName());
         String encodedFileName = URLEncoder.encode(rawFileName, StandardCharsets.UTF_8).replaceAll("\\+", "%20");
@@ -186,46 +188,80 @@ public class DiningTableServiceImpl implements DiningTableService {
     }
 
     @Override
-    public int generateAllQrCodes() {
-        List<DiningTable> tables = diningTableMapper.selectList(null);
-        int generated = 0;
-        for (DiningTable t : tables) {
-            try {
-                ensureTableQrCode(t);
-                generated++;
-            } catch (Exception e) {
-                log.error("Generate table QR failed, code={}", t.getCode(), e);
+        public int generateAllQrCodes() {
+            List<DiningTable> tables = diningTableMapper.selectList(null);
+            int generated = 0;
+            int skipped = 0;
+            for (DiningTable t : tables) {
+                if (StringUtils.hasText(t.getQrCodeUrl())) {
+                    // 已有二维码：跳过，不重新生成覆盖（「生成全部」只补缺失的）
+                    skipped++;
+                    continue;
+                }
+                try {
+                    ensureTableQrCode(t);
+                    generated++;
+                } catch (Exception e) {
+                    log.error("Generate table QR failed, code={}", t.getCode(), e);
+                }
             }
+            log.info("Batch generate table QR done: total={}, generated={}, skipped={}",
+                    tables.size(), generated, skipped);
+            return generated;
         }
-        log.info("Batch generate table QR done: total={}, generated={}", tables.size(), generated);
-        return generated;
-    }
 
     @Override
-    public QrCodeTaskVO submitGenerateAllQrCodesTask() {
-        List<DiningTable> tables = diningTableMapper.selectList(null);
-        QrCodeTaskVO vo = new QrCodeTaskVO();
-        vo.setTaskId(newTaskId());
-        vo.setTaskType("GENERATE_ALL");
-        vo.setStatus("SUCCESS");
-        vo.setMessage("二维码批量生成完成");
-        int done = 0;
-        for (DiningTable t : tables) {
-            try {
-                ensureTableQrCode(t);
-                done++;
-            } catch (Exception e) {
-                log.error("Generate table QR failed, code={}", t.getCode(), e);
-            }
+        public QrCodeTaskVO submitGenerateAllQrCodesTask() {
+            // 1. 先登记任务（PENDING），请求立即返回，前端轮询状态
+            List<DiningTable> tables = diningTableMapper.selectList(null);
+            String taskId = newTaskId();
+            QrCodeTaskVO vo = new QrCodeTaskVO();
+            vo.setTaskId(taskId);
+            vo.setTaskType("GENERATE_ALL");
+            vo.setStatus("PENDING");
+            vo.setMessage("二维码批量生成任务已提交，处理中");
+            vo.setTotal(tables.size());
+            vo.setCompleted(0);
+            vo.setDownloadable(false);
+            vo.setCreateTime(LocalDateTime.now());
+            QR_TASKS.put(taskId, vo);
+
+            // 2. 可靠消息：写 mq_message 发件箱后异步投递（routing key: table.qrcode.generate），
+            //    RabbitMQ 暂时不可用时消息留在发件箱，由 ReliableMessageResendTask 定时补偿重发
+            TableQrCodeEvent event = TableQrCodeEvent.builder()
+                    .messageKey(taskId)
+                    .taskId(taskId)
+                    .total(tables.size())
+                    .build();
+            reliableMessageService.send(taskId, rabbitMqConfig.getTableQrCodeRoutingKey(),
+                    "GEN_ALL_QR", "TABLE_QR", taskId, event);
+            log.info("Table QR generate task submitted: taskId={}, total={}", taskId, tables.size());
+            return vo;
         }
-        vo.setTotal(tables.size());
-        vo.setCompleted(done);
-        vo.setDownloadable(false);
-        vo.setCreateTime(LocalDateTime.now());
-        vo.setFinishTime(LocalDateTime.now());
-        QR_TASKS.put(vo.getTaskId(), vo);
-        return vo;
-    }
+
+        @Override
+        public void completeGenerateAllQrTask(String taskId, Integer total, Integer completed, String error) {
+            QrCodeTaskVO vo = QR_TASKS.get(taskId);
+            if (vo == null) {
+                // 任务登记已丢失（如服务重启），补一个完整 VO 保证前端轮询能收敛
+                vo = new QrCodeTaskVO();
+                vo.setTaskId(taskId);
+                vo.setTaskType("GENERATE_ALL");
+                vo.setCreateTime(LocalDateTime.now());
+            }
+            boolean failed = StringUtils.hasText(error);
+            vo.setStatus(failed ? "FAILED" : "SUCCESS");
+            vo.setMessage(failed ? "生成失败：" + error : "二维码批量生成完成");
+            if (total != null) {
+                vo.setTotal(total);
+            }
+            vo.setCompleted(completed == null ? 0 : completed);
+            vo.setDownloadable(false);
+            vo.setFinishTime(LocalDateTime.now());
+            QR_TASKS.put(taskId, vo);
+            log.info("Table QR generate task finished: taskId={}, status={}, total={}, completed={}",
+                    taskId, vo.getStatus(), vo.getTotal(), vo.getCompleted());
+        }
 
     @Override
     public QrCodeTaskVO submitDownloadAllQrCodesTask() {
@@ -242,7 +278,7 @@ public class DiningTableServiceImpl implements DiningTableService {
         vo.setCreateTime(LocalDateTime.now());
         vo.setFinishTime(LocalDateTime.now());
 
-        byte[] zipBytes = buildAreaGroupedZip(tables);
+        byte[] zipBytes = buildAllQrZip(tables);
         QR_TASK_FILES.put(vo.getTaskId(), zipBytes);
         QR_TASKS.put(vo.getTaskId(), vo);
         return vo;
@@ -294,18 +330,67 @@ public class DiningTableServiceImpl implements DiningTableService {
         return QrCodeUtil.generatePng(qrContent, 300, 300);
     }
 
-    /** Generate (if needed), upload to MinIO, persist the public URL, and return the PNG bytes. */
-    private byte[] ensureTableQrCode(DiningTable table) {
-        byte[] png = generateTableQrCodeImage(table.getCode());
-        String objectKey = QR_PREFIX + table.getCode() + ".png";
-        String url = uploadToMinio(png, objectKey, "image/png");
+    /** 读回二维码 PNG；MinIO 对象缺失/读失败时现场重新生成（懒重建兜底，避免下载 0 字节损坏文件） */
+        private byte[] resolveOrRegenerate(DiningTable table) {
+            if (StringUtils.hasText(table.getQrCodeUrl())) {
+                byte[] existing = resolveQrCodeBytes(table.getQrCodeUrl());
+                if (existing.length > 0) {
+                    return existing;
+                }
+                log.warn("QR object missing/empty in MinIO, regenerate: code={}, url={}",
+                        table.getCode(), table.getQrCodeUrl());
+            }
+            return ensureTableQrCode(table);
+        }
 
-        DiningTable update = new DiningTable();
-        update.setId(table.getId());
-        update.setQrCodeUrl(url);
-        diningTableMapper.updateById(update);
-        return png;
-    }
+        /**
+         * 生成或复用桌台二维码 PNG：已有 URL 且 MinIO 可读则直接返回现成的（不重新生成、不覆盖上传）；
+         * 否则生成 300x300 PNG、上传 MinIO、持久化公开 URL 后返回字节。
+         */
+        private byte[] ensureTableQrCode(DiningTable table) {
+            if (StringUtils.hasText(table.getQrCodeUrl())) {
+                byte[] existing = resolveQrCodeBytes(table.getQrCodeUrl());
+                if (existing.length > 0) {
+                    return existing; // 已有：跳过重新生成
+                }
+                log.warn("QR object missing in MinIO, will regenerate: code={}", table.getCode());
+            }
+            byte[] png = generateTableQrCodeImage(table.getCode());
+            String objectKey = QR_PREFIX + table.getCode() + ".png";
+            String url = uploadToMinio(png, objectKey, "image/png");
+
+            DiningTable update = new DiningTable();
+            update.setId(table.getId());
+            update.setQrCodeUrl(url);
+            diningTableMapper.updateById(update);
+            return png;
+        }
+
+        @Override
+        public void deleteTableQrCode(Long id) {
+            DiningTable table = diningTableMapper.selectById(id);
+            if (table == null) {
+                throw new BusinessException("Table not found");
+            }
+            if (!StringUtils.hasText(table.getQrCodeUrl())) {
+                throw new BusinessException("该桌台暂无二维码，无需删除");
+            }
+            // 删除 MinIO 对象（尽力而为：对象已丢失时忽略，不影响清库）
+            try {
+                minioClient.removeObject(RemoveObjectArgs.builder()
+                        .bucket(minioConfig.getBucket())
+                        .object(extractObjectKey(table.getQrCodeUrl()))
+                        .build());
+            } catch (Exception e) {
+                log.warn("Remove QR object from MinIO failed, ignore: code={}, url={}",
+                        table.getCode(), table.getQrCodeUrl(), e);
+            }
+            // 清空落库字段（MyBatis-Plus NOT_NULL 策略下 updateById 不写 null，必须用 UpdateWrapper.set）
+            diningTableMapper.update(null, new LambdaUpdateWrapper<DiningTable>()
+                    .eq(DiningTable::getId, id)
+                    .set(DiningTable::getQrCodeUrl, null));
+            log.info("Table QR deleted: tableId={}, code={}", id, table.getCode());
+        }
 
     /** Upload PNG bytes to the public MinIO bucket and return the full access URL. */
     private String uploadToMinio(byte[] bytes, String objectKey, String contentType) {
@@ -328,44 +413,45 @@ public class DiningTableServiceImpl implements DiningTableService {
     }
 
     /** Download PNG bytes back from MinIO using a stored URL. */
-    private byte[] resolveQrCodeBytes(String url) {
-        String bucket = minioConfig.getBucket();
-        String prefix = minioConfig.getEndpoint() + "/" + bucket + "/";
-        String objectKey = url.startsWith(prefix) ? url.substring(prefix.length()) : url;
-        try (var stream = minioClient.getObject(GetObjectArgs.builder()
-                .bucket(bucket).object(objectKey).build())) {
-            return stream.readAllBytes();
-        } catch (Exception e) {
-            log.warn("Read QR from MinIO failed, falls back to regenerate: {}", e.getMessage());
-            return new byte[0];
+        private byte[] resolveQrCodeBytes(String url) {
+            String bucket = minioConfig.getBucket();
+            String objectKey = extractObjectKey(url);
+            try (var stream = minioClient.getObject(GetObjectArgs.builder()
+                    .bucket(bucket).object(objectKey).build())) {
+                return stream.readAllBytes();
+            } catch (Exception e) {
+                log.warn("Read QR from MinIO failed, falls back to regenerate: {}", e.getMessage());
+                return new byte[0];
+            }
         }
-    }
 
-    /** Pack all table QRs into a zip grouped by area folder (Client: e.g. "A区/"). */
-    private byte[] buildAreaGroupedZip(List<DiningTable> tables) {
-        Map<String, List<DiningTable>> byArea = tables.stream()
-                .collect(Collectors.groupingBy(t -> StringUtils.hasText(t.getAreaName()) ? t.getAreaName() : "未分区"));
-        try {
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            try (ZipOutputStream zos = new ZipOutputStream(bos)) {
-                for (Map.Entry<String, List<DiningTable>> entry : byArea.entrySet()) {
-                    String folder = sanitizeFileName(entry.getKey());
-                    for (DiningTable t : entry.getValue()) {
-                        byte[] png = StringUtils.hasText(t.getQrCodeUrl())
-                                ? resolveQrCodeBytes(t.getQrCodeUrl())
-                                : ensureTableQrCode(t);
-                        zos.putNextEntry(new ZipEntry(folder + "/" + sanitizeFileName(t.getCode()) + ".png"));
+        /** 从完整 URL 提取 MinIO object key（如 http://host/bucket/table/qrcode/A01.png -> table/qrcode/A01.png） */
+        private String extractObjectKey(String url) {
+            String prefix = minioConfig.getEndpoint() + "/" + minioConfig.getBucket() + "/";
+            return url != null && url.startsWith(prefix) ? url.substring(prefix.length()) : url;
+        }
+
+    /** Pack all table QRs into a zip, each file named {@code 名称-代码-桌区.png}. */
+        private byte[] buildAllQrZip(List<DiningTable> tables) {
+            try {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                try (ZipOutputStream zos = new ZipOutputStream(bos)) {
+                    for (DiningTable t : tables) {
+                        byte[] png = resolveOrRegenerate(t);
+                        String area = StringUtils.hasText(t.getAreaName()) ? t.getAreaName() : "未分区";
+                        String filename = String.format("%s-%s-%s.png",
+                                sanitizeFileName(t.getName()), sanitizeFileName(t.getCode()), sanitizeFileName(area));
+                        zos.putNextEntry(new ZipEntry(filename));
                         zos.write(png);
                         zos.closeEntry();
                     }
                 }
+                return bos.toByteArray();
+            } catch (Exception e) {
+                log.error("Build table QR zip failed", e);
+                throw new BusinessException("打包桌台二维码失败");
             }
-            return bos.toByteArray();
-        } catch (Exception e) {
-            log.error("Build table QR zip failed", e);
-            throw new BusinessException("打包桌台二维码失败");
         }
-    }
 
     private String sanitizeFileName(String name) {
         return (name == null ? "" : name).replaceAll("[\\\\/:*?\"<>|]", "_");
@@ -376,8 +462,9 @@ public class DiningTableServiceImpl implements DiningTableService {
     }
 
     private DiningTableVO toVO(DiningTable table) {
-        DiningTableVO vo = new DiningTableVO();
-        BeanUtils.copyProperties(table, vo);
-        return vo;
+            DiningTableVO vo = new DiningTableVO();
+            BeanUtils.copyProperties(table, vo);
+            vo.setQrCodeGenerated(StringUtils.hasText(table.getQrCodeUrl()));
+            return vo;
+        }
     }
-}

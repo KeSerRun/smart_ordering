@@ -3,6 +3,7 @@ package com.smartordering.modules.dish.vo;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * Dish view object (returned to app)
@@ -26,4 +27,7 @@ public class DishVO {
     private Integer soldOut;
     private Integer stock;
     private Integer preparationTime;
+
+    /** Spec items with option prices (populated on app side) */
+    private List<DishSpecItemVO> specItems;
 }

@@ -6,6 +6,7 @@
         <n-space style="margin-bottom: 12px">
           <n-button type="primary" @click="openTableModal()">新增桌台</n-button>
           <n-button @click="handleGenAllQr">生成全部桌台二维码</n-button>
+          <n-button @click="handleDownloadAllQr">打包下载全部二维码</n-button>
           <n-button @click="loadTables">刷新</n-button>
         </n-space>
         <n-data-table :columns="tableColumns" :data="tables" :loading="tableLoading" />
@@ -62,7 +63,7 @@
 import { h, onMounted, ref, computed } from 'vue'
 import {
   NSpace, NTabs, NTabPane, NButton, NDataTable, NModal, NForm, NFormItem,
-  NInput, NInputNumber, NSelect, NSwitch, NTag, useMessage
+  NInput, NInputNumber, NSelect, NSwitch, NTag, NImage, useMessage
 } from 'naive-ui'
 import * as tableApi from '@/api/table'
 
@@ -95,8 +96,17 @@ const tableColumns = [
     render: (r) => h(NTag, { type: (tableStatusMap[r.status] || ['-', 'default'])[1], size: 'small' }, () => (tableStatusMap[r.status] || ['-'])[0])
   },
   {
-    title: '二维码', key: 'qr', width: 100,
-    render: (r) => h(NButton, { size: 'small', text: true, onClick: () => downloadQr(r.id) }, { default: () => '下载' })
+    title: '二维码', key: 'qr', width: 170,
+    render: (r) =>
+      h(NSpace, { size: 4, align: 'center' }, () => [
+        r.qrCodeUrl
+          ? h(NImage, { src: r.qrCodeUrl, width: 44, height: 44, objectFit: 'cover', style: 'border-radius: 4px; border: 1px solid #eee' })
+          : h('div', { style: 'width:44px;height:44px;border-radius:4px;border:1px dashed #ccc;display:flex;align-items:center;justify-content:center;color:#999;font-size:12px' }, () => '未生成'),
+        h(NButton, { size: 'small', text: true, onClick: () => downloadQr(r.id) }, { default: () => '下载' }),
+        r.qrCodeUrl
+          ? h(NButton, { size: 'small', text: true, type: 'error', onClick: () => removeQr(r) }, { default: () => '删除' })
+          : null
+      ])
   },
   {
     title: '操作', key: 'action', width: 140,
@@ -202,22 +212,56 @@ async function handleGenAllQr() {
       if (t && t.status === 'SUCCESS') {
         message.success(`已生成 ${t.completed || 0} 张二维码`)
         loadTables()
+      } else if (t && t.status === 'FAILED') {
+        message.error(t.message || '二维码批量生成失败')
+        loadTables()
       } else {
-        setTimeout(poll, 1500)
+        setTimeout(poll, 1500) // PENDING：继续轮询
       }
     }
     poll()
   }
 }
 
-async function downloadQr(id) {
-  const blob = await tableApi.downloadTableQr(id)
+function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `qr-${id}.png`
+  a.download = filename
   a.click()
   URL.revokeObjectURL(url)
+}
+
+async function downloadQr(id) {
+  const blob = await tableApi.downloadTableQr(id)
+  saveBlob(blob, `qr-${id}.png`)
+  // 下载接口对未生成的桌台会现场生成二维码，刷新列表同步状态
+  loadTables()
+}
+
+async function removeQr(row) {
+  await tableApi.deleteTableQr(row.id)
+  message.success(`已删除 ${row.name || row.code} 的二维码`)
+  loadTables()
+}
+
+// 打包下载全部桌台二维码（zip，文件名：名称-代码-桌区.png）
+async function handleDownloadAllQr() {
+  const task = await tableApi.genDownloadAllQrTask()
+  if (!task || !task.taskId) return
+  const poll = async () => {
+    const t = await tableApi.getQrTask(task.taskId)
+    if (t && t.status === 'SUCCESS' && t.downloadable) {
+      const blob = await tableApi.downloadQrTaskFile(task.taskId)
+      saveBlob(blob, t.fileName || 'tables-qrcodes.zip')
+      message.success(`已打包 ${t.completed || 0} 张二维码`)
+    } else if (t && t.status === 'FAILED') {
+      message.error(t.message || '打包失败')
+    } else {
+      setTimeout(poll, 1000) // 仍在打包
+    }
+  }
+  poll()
 }
 
 onMounted(() => {

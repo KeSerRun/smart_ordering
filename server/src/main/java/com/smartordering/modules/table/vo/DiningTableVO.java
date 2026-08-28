@@ -17,6 +17,9 @@ public class DiningTableVO {
     private String name;
     private Integer capacity;
     private Integer status;
+
+    /** 二维码是否已生成（qrCodeUrl 非空） */
+    private Boolean qrCodeGenerated;
     private String qrCodeUrl;
     private Long areaId;
     private String areaName;

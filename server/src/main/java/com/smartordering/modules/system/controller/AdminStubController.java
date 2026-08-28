@@ -33,10 +33,4 @@ public class AdminStubController {
             "alerts", List.of()
         ));
     }
-
-    /** Theme preset (system config) */
-    @GetMapping("/../system/config/theme-preset")
-    public ApiResponse<Map<String, Object>> themePreset() {
-        return ApiResponse.ok(Map.of());
-    }
 }

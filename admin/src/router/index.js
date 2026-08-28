@@ -23,11 +23,9 @@ const routes = [
       // 系统管理
       { path: 'system/user', name: 'system-user', component: () => import('@/views/system/user/index.vue'), meta: { title: '用户管理' } },
       { path: 'system/role', name: 'system-role', component: () => import('@/views/system/role/index.vue'), meta: { title: '角色管理' } },
-      { path: 'system/menu', name: 'system-menu', component: () => import('@/views/system/menu/index.vue'), meta: { title: '菜单管理' } },
-      { path: 'system/dict', name: 'system-dict', component: () => import('@/views/system/dict/index.vue'), meta: { title: '字典管理' } },
-      { path: 'system/config', name: 'system-config', component: () => import('@/views/system/config/index.vue'), meta: { title: '系统配置' } },
       { path: 'system/login-log', name: 'system-login-log', component: () => import('@/views/system/login-log/index.vue'), meta: { title: '登录日志' } },
-      { path: 'system/operation-log', name: 'system-operation-log', component: () => import('@/views/system/operation-log/index.vue'), meta: { title: '操作日志' } }
+      { path: 'system/operation-log', name: 'system-operation-log', component: () => import('@/views/system/operation-log/index.vue'), meta: { title: '操作日志' } },
+      { path: 'mq', name: 'mq', component: () => import('@/views/mq/index.vue'), meta: { title: 'MQ 消息' } }
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/' }

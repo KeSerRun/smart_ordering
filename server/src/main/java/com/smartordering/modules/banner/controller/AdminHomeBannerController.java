@@ -53,4 +53,11 @@ public class AdminHomeBannerController {
         homeBannerService.updateStatus(id, status);
         return Result.success();
     }
+
+    @Operation(summary = "Delete banner (logic delete)")
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        homeBannerService.delete(id);
+        return Result.success();
+    }
 }
