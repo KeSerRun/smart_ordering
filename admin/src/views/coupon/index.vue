@@ -134,7 +134,7 @@
 
 <script setup>
 import { h, ref, onMounted, watch } from 'vue'
-import { useMessage, useDialog } from 'naive-ui'
+import { useMessage, useDialog, NSpace } from 'naive-ui'
 import {
   listCouponTemplates, createCouponTemplate, updateCouponTemplate, updateCouponTemplateStatus,
   grantCoupons, getGrantTask, listGrantTasks, listGrantTaskDetails,
