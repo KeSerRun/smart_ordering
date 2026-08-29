@@ -64,6 +64,18 @@ public class MemberServiceImpl implements MemberService {
     private final MemberGrowthRecordMapper growthRecordMapper;
     private final SysUserMapper sysUserMapper;
 
+    /**
+     * 获取会员中心首页数据
+     * 
+     * 功能：根据用户ID查询会员档案，返回会员中心展示所需的核心信息，包括：
+     * - 会员基本信息（会员号、等级名称）
+     * - 当前成长值及下一等级所需成长值
+     * - 积分余额及历史累计获取积分
+     * 
+     * @param userId 用户ID
+     * @return MemberCenterVO 会员中心数据视图对象
+     * @throws BusinessException 当会员档案不存在时抛出
+     */
     @Override
     public MemberCenterVO getMemberCenter(Long userId) {
         MemberProfile profile = memberProfileMapper.selectOne(
@@ -84,6 +96,13 @@ public class MemberServiceImpl implements MemberService {
         return vo;
     }
 
+    /**
+     * 获取所有已启用的会员等级列表
+     * 
+     * 功能：查询状态为启用（status=1）的会员等级，按排序值升序返回
+     * 
+     * @return List<MemberLevelVO> 启用等级列表
+     */
     @Override
     public List<MemberLevelVO> listEnabledLevels() {
         return memberLevelMapper.selectList(new LambdaQueryWrapper<MemberLevel>()
@@ -91,6 +110,16 @@ public class MemberServiceImpl implements MemberService {
                 .stream().map(this::toLevelVO).collect(Collectors.toList());
     }
 
+    /**
+     * 分页查询会员积分变动记录（用户端）
+     * 
+     * 功能：根据用户ID分页查询积分流水，按创建时间倒序排列
+     * 
+     * @param userId   用户ID
+     * @param pageNum  页码
+     * @param pageSize 每页大小
+     * @return IPage<MemberPointsRecordVO> 积分记录分页结果
+     */
     @Override
     public IPage<MemberPointsRecordVO> pagePointsRecords(Long userId, int pageNum, int pageSize) {
         IPage<MemberPointsRecord> result = pointsRecordMapper.selectPage(new Page<>(pageNum, pageSize),
@@ -103,6 +132,16 @@ public class MemberServiceImpl implements MemberService {
         });
     }
 
+    /**
+     * 分页查询会员成长值变动记录（用户端）
+     * 
+     * 功能：根据用户ID分页查询成长值流水，按创建时间倒序排列
+     * 
+     * @param userId   用户ID
+     * @param pageNum  页码
+     * @param pageSize 每页大小
+     * @return IPage<MemberGrowthRecordVO> 成长值记录分页结果
+     */
     @Override
     public IPage<MemberGrowthRecordVO> pageGrowthRecords(Long userId, int pageNum, int pageSize) {
         IPage<MemberGrowthRecord> result = growthRecordMapper.selectPage(new Page<>(pageNum, pageSize),
@@ -117,6 +156,15 @@ public class MemberServiceImpl implements MemberService {
 
     // ==================== admin ====================
 
+    /**
+     * 分页查询会员列表（管理端）
+     * 
+     * 功能：支持按会员号、等级ID、状态筛选，关联查询用户信息（昵称、手机号）
+     * 和等级名称，按创建时间倒序排列
+     * 
+     * @param dto 查询参数（包含分页参数和筛选条件）
+     * @return PageResult<MemberProfileVO> 会员列表分页结果
+     */
     @Override
     public PageResult<MemberProfileVO> pageList(MemberQueryDTO dto) {
         int pageNum = dto.getPageNum() == null ? 1 : dto.getPageNum();
@@ -149,6 +197,18 @@ public class MemberServiceImpl implements MemberService {
         return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
     }
 
+    /**
+     * 获取会员详情（管理端）
+     * 
+     * 功能：根据会员档案ID查询完整信息，包括：
+     * - 会员基本信息
+     * - 等级名称及该等级的积分倍率、折扣率
+     * - 近期积分/成长值记录（当前返回空列表，可扩展）
+     * 
+     * @param id 会员档案ID（主键）
+     * @return MemberDetailVO 会员详情视图对象
+     * @throws BusinessException 当会员档案不存在时抛出
+     */
     @Override
     public MemberDetailVO detail(Long id) {
         MemberProfile profile = memberProfileMapper.selectById(id);
@@ -168,6 +228,15 @@ public class MemberServiceImpl implements MemberService {
         return vo;
     }
 
+    /**
+     * 获取会员运营概览统计数据（管理端）
+     * 
+     * 功能：统计会员总数、激活数、冻结数
+     * 注：积分余额总计、成长值总计、消费总额、近期新增等字段当前为硬编码默认值，
+     * 后续需补充真实统计逻辑
+     * 
+     * @return MemberOverviewVO 概览统计数据
+     */
     @Override
     public MemberOverviewVO overview() {
         long total = memberProfileMapper.selectCount(null);
@@ -186,6 +255,13 @@ public class MemberServiceImpl implements MemberService {
         return vo;
     }
 
+    /**
+     * 获取全部会员等级列表（管理端，含禁用等级）
+     * 
+     * 功能：查询所有会员等级（不限状态），按排序值升序返回
+     * 
+     * @return List<MemberLevelVO> 全部等级列表
+     */
     @Override
     public List<MemberLevelVO> levelList() {
         return memberLevelMapper.selectList(new LambdaQueryWrapper<MemberLevel>()
@@ -193,6 +269,14 @@ public class MemberServiceImpl implements MemberService {
                 .stream().map(this::toLevelVO).collect(Collectors.toList());
     }
 
+    /**
+     * 创建会员等级（管理端）
+     * 
+     * 功能：新增会员等级，自动生成ID，若未传状态则默认为启用（status=1）
+     * 
+     * @param dto 等级创建参数
+     * @return Long 新创建的等级ID
+     */
     @Override
     public Long createLevel(MemberLevelCreateDTO dto) {
         MemberLevel level = new MemberLevel();
@@ -205,6 +289,15 @@ public class MemberServiceImpl implements MemberService {
         return level.getId();
     }
 
+    /**
+     * 更新会员等级信息（管理端）
+     * 
+     * 功能：根据ID更新等级信息（非空字段覆盖），若等级不存在则抛异常
+     * 
+     * @param id  等级ID
+     * @param dto 等级更新参数
+     * @throws BusinessException 当等级不存在时抛出
+     */
     @Override
     public void updateLevel(Long id, MemberLevelUpdateDTO dto) {
         if (memberLevelMapper.selectById(id) == null) {
@@ -216,6 +309,15 @@ public class MemberServiceImpl implements MemberService {
         memberLevelMapper.updateById(level);
     }
 
+    /**
+     * 更新会员等级状态（启用/禁用）（管理端）
+     * 
+     * 功能：单独更新等级的启用状态
+     * 
+     * @param id  等级ID
+     * @param dto 状态更新参数（status: 1-启用, 0-禁用）
+     * @throws BusinessException 当等级不存在时抛出
+     */
     @Override
     public void updateLevelStatus(Long id, MemberLevelStatusDTO dto) {
         if (memberLevelMapper.selectById(id) == null) {
@@ -227,6 +329,14 @@ public class MemberServiceImpl implements MemberService {
         memberLevelMapper.updateById(update);
     }
 
+    /**
+     * 分页查询积分变动记录（管理端）
+     * 
+     * 功能：支持按用户ID、变动类型、时间范围筛选，按创建时间倒序排列
+     * 
+     * @param dto 查询参数（含分页及筛选条件）
+     * @return PageResult<MemberPointsRecordVO> 积分记录分页结果
+     */
     @Override
     public PageResult<MemberPointsRecordVO> pointsRecordPage(MemberPointsRecordQueryDTO dto) {
         LambdaQueryWrapper<MemberPointsRecord> wrapper = new LambdaQueryWrapper<>();
@@ -249,6 +359,14 @@ public class MemberServiceImpl implements MemberService {
         return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
     }
 
+    /**
+     * 分页查询成长值变动记录（管理端）
+     * 
+     * 功能：支持按用户ID、时间范围筛选，按创建时间倒序排列
+     * 
+     * @param dto 查询参数（含分页及筛选条件）
+     * @return PageResult<MemberGrowthRecordVO> 成长值记录分页结果
+     */
     @Override
     public PageResult<MemberGrowthRecordVO> growthRecordPage(MemberGrowthRecordQueryDTO dto) {
         LambdaQueryWrapper<MemberGrowthRecord> wrapper = new LambdaQueryWrapper<>();
@@ -270,6 +388,18 @@ public class MemberServiceImpl implements MemberService {
         return PageResult.of(list, page.getCurrent(), page.getSize(), page.getTotal());
     }
 
+    /**
+     * 手动调整会员积分（管理端）
+     * 
+     * 功能：管理员手动增减用户积分，同时记录积分变动流水。
+     * - 正数表示增加，负数表示扣减
+     * - 变动类型：增加为1（收入），扣减为2（支出）
+     * - 业务类型固定为 "ADJUST"
+     * 
+     * @param userId 用户ID
+     * @param dto    调整参数（变动金额、备注）
+     * @throws BusinessException 当会员档案不存在时抛出
+     */
     @Override
     public void adjustPoints(Long userId, MemberPointsAdjustDTO dto) {
         MemberProfile profile = memberProfileMapper.selectOne(
@@ -295,6 +425,16 @@ public class MemberServiceImpl implements MemberService {
         pointsRecordMapper.insert(record);
     }
 
+    /**
+     * 手动分配/变更会员等级（管理端）
+     * 
+     * 功能：管理员为指定用户直接设置等级，不依赖成长值自动升级规则。
+     * 仅允许设置为已启用（status=1）的等级。
+     * 
+     * @param userId 用户ID
+     * @param dto    等级分配参数（目标等级ID）
+     * @throws BusinessException 当会员档案不存在或目标等级不存在/已停用时抛出
+     */
     @Override
     public void assignLevel(Long userId, MemberLevelAssignDTO dto) {
         MemberProfile profile = memberProfileMapper.selectOne(
@@ -314,6 +454,28 @@ public class MemberServiceImpl implements MemberService {
         log.info("Member level assigned: userId={}, levelId={}, levelName={}, operator=admin",
                 userId, level.getId(), level.getLevelName());
     }
+
+    /**
+     * 消费累计处理（核心业务方法）
+     * 
+     * 功能：用户支付完成后调用，根据实付金额累计积分和成长值，并触发自动升级判断。
+     * 
+     * 业务规则：
+     * 1. 积分 = 实付金额 × 等级积分倍率（向下取整），倍率默认1.0
+     * 2. 成长值 = 实付金额（1:1，向下取整）
+     * 3. 自动升级：成长值达到更高启用等级门槛时，阶梯式逐级升级
+     * 4. 记录积分流水（类型：收入，业务类型：ORDER_PAY）
+     * 5. 记录成长值流水（业务类型：ORDER_PAY）
+     * 
+     * 事务特性：@Transactional(propagation = Propagation.REQUIRES_NEW)
+     * 独立事务，不受调用方事务影响，确保累计操作必定提交。
+     * 
+     * 容错处理：若会员档案不存在，则静默跳过（非会员不累计）
+     * 
+     * @param userId  用户ID
+     * @param amount  实付金额（必须 > 0）
+     * @param orderId 订单ID（关联业务标识）
+     */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void accumulateConsume(Long userId, BigDecimal amount, Long orderId) {
@@ -389,8 +551,19 @@ public class MemberServiceImpl implements MemberService {
     }
 
     /**
-     * 阶梯自动升级：从当前等级的下一个启用等级起，成长值达到门槛即升，直到最高可达成等级。
-     * 返回升级后的等级（未升级返回 null）。
+     * 阶梯式自动升级逻辑
+     * 
+     * 功能：从当前等级的下一个启用等级开始，遍历所有更高启用等级，
+     * 若成长值达到该等级门槛则升级，直到找到最高可达成等级。
+     * 
+     * 规则：
+     * - 只升级到排序值（sort）大于当前等级的等级
+     * - 只考虑启用（status=1）的等级
+     * - 返回最高可达到的等级（若未达到任何更高等级则返回null）
+     * 
+     * @param currentLevelId 当前等级ID（可为null）
+     * @param growthValue    当前成长值
+     * @return MemberLevel 升级后的等级（未升级返回null）
      */
     private MemberLevel tryUpgrade(Long currentLevelId, int growthValue) {
         MemberLevel current = currentLevelId == null ? null : memberLevelMapper.selectById(currentLevelId);
@@ -413,18 +586,41 @@ public class MemberServiceImpl implements MemberService {
     }
     // ==================== helpers ====================
 
+    /**
+     * 获取下一个更高等级（用户端使用）
+     * 
+     * 功能：根据当前等级排序值，查询下一个排序值更高且启用的等级
+     * 
+     * @param currentSort 当前等级的排序值
+     * @return MemberLevel 下一个等级（若不存在则返回null）
+     */
     private MemberLevel getNextLevel(int currentSort) {
         return memberLevelMapper.selectOne(new LambdaQueryWrapper<MemberLevel>()
                 .gt(MemberLevel::getSort, currentSort).eq(MemberLevel::getStatus, 1)
                 .orderByAsc(MemberLevel::getSort).last("LIMIT 1"));
     }
 
+    /**
+     * 将 MemberLevel 实体转换为 MemberLevelVO 视图对象
+     * 
+     * @param level 等级实体
+     * @return MemberLevelVO 等级视图对象
+     */
     private MemberLevelVO toLevelVO(MemberLevel level) {
         MemberLevelVO vo = new MemberLevelVO();
         BeanUtils.copyProperties(level, vo);
         return vo;
     }
 
+    /**
+     * 批量加载用户信息映射
+     * 
+     * 功能：从会员档案列表中提取用户ID集合，批量查询 SysUser，
+     * 返回以用户ID为key的Map，用于关联填充昵称、手机号等字段
+     * 
+     * @param profiles 会员档案列表
+     * @return Map<Long, SysUser> 用户ID -> 用户信息
+     */
     private Map<Long, SysUser> loadUserMap(List<MemberProfile> profiles) {
         Set<Long> userIds = profiles.stream().map(MemberProfile::getUserId)
                 .filter(Objects::nonNull).collect(Collectors.toSet());
@@ -435,6 +631,14 @@ public class MemberServiceImpl implements MemberService {
                 .collect(Collectors.toMap(SysUser::getId, u -> u));
     }
 
+    /**
+     * 加载全部等级映射
+     * 
+     * 功能：查询所有会员等级，返回以等级ID为key的Map，
+     * 用于关联填充等级名称等字段
+     * 
+     * @return Map<Long, MemberLevel> 等级ID -> 等级信息
+     */
     private Map<Long, MemberLevel> loadLevelMap() {
         return memberLevelMapper.selectList(null).stream()
                 .collect(Collectors.toMap(MemberLevel::getId, l -> l));
